@@ -1,9 +1,9 @@
 schema_version = 1
 
 [requires]
-"linux.apt" = ["noto-cjk", "jetbrains-mono"]
-"linux.dnf" = ["noto-cjk", "jetbrains-mono"]
-"linux.pacman" = ["noto-cjk", "jetbrains-mono"]
+"linux.apt" = ["sf-pro-text", "pingfang-sc", "noto-cjk", "jetbrains-mono"]
+"linux.dnf" = ["sf-pro-text", "pingfang-sc", "noto-cjk", "jetbrains-mono"]
+"linux.pacman" = ["sf-pro-text", "pingfang-sc", "noto-cjk", "jetbrains-mono"]
 
 [[config]]
 id = "fontconfig"

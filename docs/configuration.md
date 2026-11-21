@@ -52,6 +52,8 @@ macos = ["xcode-command-line-tools"]
 
 实际配置覆盖只由这些路径决定，声明软件不代表自动发现它的所有配置。桌面字体为显式配置专用项，采集 Fontconfig、KDE、GTK 的真实文件；仅 native 环境适用；未配置该桌面时不要选择该项。
 
+原生 Linux 的默认 profile 包含 `sf-pro-text` 和 `pingfang-sc`，也可用 `linux-fonts` 只选择这两款字体。桌面采用 SF Pro Text 作为西文及数字字体，简中回退选静态 PingFang SC；具体匹配顺序由本机配置决定。`desktop-fonts` 选择两者及既有的 Noto CJK、JetBrains Mono 依赖，便于目标机恢复相同的字体偏好。
+
 ## Profile v3
 
 ```ini

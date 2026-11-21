@@ -53,6 +53,16 @@ class ViewerTest(Fixture):
         self.assertIn('fish', api.load_catalog())
         self.assertEqual(len(self.editor.configurations()), 1)
 
+    def test_linux_desktop_font_selection(self):
+        catalog = api.load_catalog()
+        fonts = {'sf-pro-text', 'pingfang-sc'}
+        self.assertEqual(set(api.selection(profile='linux-fonts')), fonts)
+        for platform in ('linux.apt', 'linux.dnf', 'linux.pacman'):
+            with self.subTest(platform=platform):
+                for roots in (api.selection(profile='linux'), ['desktop-fonts']):
+                    self.assertTrue(fonts <= api.select(catalog, platform, 'native', roots).keys())
+                self.assertTrue(fonts.isdisjoint(api.select(catalog, platform, 'wsl', ['all'])))
+
     def test_edit_preserves_newlines_and_backup(self):
         result = self.save('updated\n')
         self.assertEqual((self.config / 'demo/settings').read_bytes(), b'updated\r\n')

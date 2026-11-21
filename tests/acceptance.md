@@ -1,5 +1,13 @@
 # 验证记录
 
+## 2026-11-22 · 原生 Linux 界面字体
+
+Fedora 45 KDE、x86_64、Python 3.14.10。使用安装器 checkout 的 Python 通过 editable 安装本仓库。运行 `DOTFILES_PYTHON=/path/to/.venv/bin/python ./tests/check.sh --strict`，24 项通过。
+
+- `api.load_catalog()` 校验全平台依赖图；检查 APT、DNF 和 Pacman 的默认、完整、字体专用 profile 及桌面配置依赖，两款字体均已选中。WSL 的默认、完整 profile 和 macOS、Windows 的完整选择均排除两项。
+- 使用临时 HOME 和四个合成配置文件执行 `snapshot export --software desktop-fonts`、`snapshot inspect`、`snapshot apply --dry-run` 和两次应用。归档含两项字体声明及四个配置文件，恢复内容一致，第二次应用全部跳过。
+- 在 syncronizer 运行 Fedora 默认、完整和字体专用 profile 的 dry-run。未执行原生 APT、Pacman、WSL、macOS 或 Windows 安装。
+
 ## 2026-11-21 · GitHub 公开首版
 
 macOS ARM64，Python 3.14.10。工作区与从暂存源码导出的副本都通过了 `./tests/check.sh --strict`，各 23 项。用合成配置验证了以下行为。
