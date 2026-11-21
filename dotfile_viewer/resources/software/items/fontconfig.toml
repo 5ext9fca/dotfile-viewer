@@ -1,0 +1,22 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "15"
+method = "apt"
+packages = "fontconfig"
+source_kind = "default"
+environments = "native"
+
+[install."linux.dnf"]
+order = "15"
+method = "dnf"
+packages = "fontconfig"
+source_kind = "default"
+environments = "native"
+
+[install."linux.pacman"]
+order = "15"
+method = "pacman"
+packages = "fontconfig"
+source_kind = "default"
+environments = "native"

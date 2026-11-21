@@ -1,0 +1,39 @@
+schema_version = 1
+
+# Configuration only; no shell installation or login-shell changes.
+# History, sessions and generated plugin bundles are not captured.
+
+[[config]]
+id = "rc"
+platforms = ["macos"]
+root = "home"
+path = ".zshrc"
+exclude = []
+
+[[config]]
+id = "profile"
+platforms = ["macos"]
+root = "home"
+path = ".zprofile"
+exclude = []
+
+[[config]]
+id = "plugins"
+platforms = ["macos"]
+root = "home"
+path = ".zsh_plugins.txt"
+exclude = []
+
+[[config]]
+id = "settings"
+platforms = ["macos"]
+root = "config_home"
+path = "zsh"
+exclude = []
+
+[[config]]
+id = "abbreviations"
+platforms = ["macos"]
+root = "config_home"
+path = "zsh-abbr/user-abbreviations"
+exclude = []

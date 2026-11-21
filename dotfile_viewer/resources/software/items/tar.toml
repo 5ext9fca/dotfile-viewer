@@ -1,0 +1,15 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "5"
+method = "apt"
+packages = "tar"
+source_kind = "default"
+environments = "native"
+
+[install."linux.dnf"]
+order = "5"
+method = "dnf"
+packages = "tar"
+source_kind = "default"
+environments = "native"

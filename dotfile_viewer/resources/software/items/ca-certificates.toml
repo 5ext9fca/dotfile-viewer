@@ -1,0 +1,7 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "5"
+method = "apt"
+packages = "ca-certificates"
+source_kind = "default"

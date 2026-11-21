@@ -1,0 +1,30 @@
+# field	portable regular expression (full match)
+order	[0-9]+
+method	[a-z][a-z-]*
+packages	.+
+source_kind	[a-z][a-z-]*
+source_url	(https?://|sparse\+https://)[^ "\\]+
+source_repo	[a-zA-Z0-9][a-zA-Z0-9_./-]*
+source_release	[a-zA-Z0-9][a-zA-Z0-9_./-]*
+mirror_url	(https?://|sparse\+https://)[^ "\\]+
+scope	desktop
+check	[a-zA-Z0-9_./-]+
+shell	bash|sh
+args	.+
+env	[A-Za-z_][A-Za-z_0-9]*=[^ ]*
+key_url	https?://[^ "\\]+
+keyring	[a-z0-9][a-z0-9.-]*
+fallback	[a-z0-9][a-z0-9-]*
+components	[a-zA-Z0-9.,_-]+
+workload	[a-zA-Z0-9._-]+
+depends_on	[a-z0-9][a-z0-9-]*( [a-z0-9][a-z0-9-]*)*
+environments	native|wsl|native wsl
+provides	[a-z][a-z0-9-]*
+wsl_provider	[a-z][a-z0-9-]*
+methods	[a-z][a-z-]*( [a-z][a-z-]*)*
+preferred_method	[a-z][a-z-]*
+detect_files	.+
+detect_dirs	.+
+install_depends_on	[a-z0-9][a-z0-9-]*( [a-z0-9][a-z0-9-]*)*
+font_files	[A-Za-z0-9][A-Za-z0-9_-]*\.(otf|ttf)( [A-Za-z0-9][A-Za-z0-9_-]*\.(otf|ttf))*
+font_family	[A-Za-z0-9][A-Za-z0-9 ._-]*

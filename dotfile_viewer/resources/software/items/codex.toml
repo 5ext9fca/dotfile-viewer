@@ -1,0 +1,54 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "60"
+method = "script"
+source_kind = "download"
+source_url = "https://chatgpt.com/codex/install.sh"
+detect_files = "path:codex"
+shell = "sh"
+env = "CODEX_NON_INTERACTIVE=1"
+install_depends_on = "curl"
+
+[install."linux.dnf"]
+order = "60"
+method = "script"
+source_kind = "download"
+source_url = "https://chatgpt.com/codex/install.sh"
+detect_files = "path:codex"
+shell = "sh"
+env = "CODEX_NON_INTERACTIVE=1"
+install_depends_on = "curl gawk"
+
+[install."linux.pacman"]
+order = "60"
+method = "script"
+source_kind = "download"
+source_url = "https://chatgpt.com/codex/install.sh"
+detect_files = "path:codex"
+shell = "sh"
+env = "CODEX_NON_INTERACTIVE=1"
+install_depends_on = "curl"
+
+[install."macos"]
+order = "60"
+method = "cask"
+packages = "codex"
+source_kind = "default"
+detect_files = "path:codex"
+install_depends_on = "homebrew"
+
+# Keep authentication, sessions, databases and installed plugins outside capture.
+[[config]]
+id = "settings"
+platforms = ["macos"]
+root = "home"
+path = ".codex/config.toml"
+exclude = []
+
+[[config]]
+id = "rules"
+platforms = ["macos"]
+root = "home"
+path = ".codex/rules"
+exclude = []

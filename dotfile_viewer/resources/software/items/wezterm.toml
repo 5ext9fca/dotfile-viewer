@@ -1,0 +1,41 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "50"
+method = "apt-repository"
+packages = "wezterm"
+source_kind = "apt-repo"
+source_url = "https://apt.fury.io/wez/"
+environments = "native"
+key_url = "https://apt.fury.io/wez/gpg.key"
+keyring = "wezterm-fury.asc"
+install_depends_on = "ca-certificates curl"
+
+[install."linux.dnf"]
+order = "50"
+method = "dnf-copr"
+packages = "wezterm"
+source_kind = "copr"
+source_repo = "wezfurlong/wezterm-nightly"
+environments = "native"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "wezterm"
+source_kind = "default"
+environments = "native"
+
+[install."macos"]
+order = "20"
+method = "cask"
+packages = "wezterm"
+source_kind = "default"
+install_depends_on = "homebrew"
+
+[[config]]
+id = "settings"
+platforms = ["linux.apt", "linux.dnf", "linux.pacman", "macos"]
+root = "config_home"
+path = "wezterm"
+exclude = []

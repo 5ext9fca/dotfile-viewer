@@ -1,0 +1,34 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "20"
+method = "apt"
+packages = "cmake"
+source_kind = "default"
+
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "cmake"
+source_kind = "default"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "cmake"
+source_kind = "default"
+
+[install."macos"]
+order = "20"
+method = "brew"
+packages = "cmake"
+source_kind = "default"
+install_depends_on = "homebrew"
+
+[install."windows"]
+order = "40"
+method = "winget"
+packages = "Kitware.CMake"
+source_kind = "winget"
+source_repo = "winget"
+detect_files = "path:cmake.exe"

@@ -1,0 +1,26 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "20"
+method = "apt"
+packages = "clang"
+source_kind = "default"
+
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "clang"
+source_kind = "default"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "clang"
+source_kind = "default"
+
+[install."macos"]
+order = "20"
+method = "brew"
+packages = "llvm"
+source_kind = "default"
+install_depends_on = "homebrew"

@@ -1,0 +1,7 @@
+schema_version = 1
+
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "perl-Time-Piece"
+source_kind = "default"

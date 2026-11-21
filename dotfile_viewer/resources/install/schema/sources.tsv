@@ -1,0 +1,13 @@
+# source kind	value field
+default	-
+apt-release	source_release
+dnf-repo	source_repo
+pacman-repo	source_repo
+brew-tap	source_repo
+cargo-index	source_url
+pypi-index	source_url
+rust-dist	source_url
+download	source_url
+apt-repo	source_url
+copr	source_repo
+winget	source_repo

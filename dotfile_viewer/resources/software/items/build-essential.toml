@@ -1,0 +1,7 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "20"
+method = "apt"
+packages = "build-essential"
+source_kind = "default"

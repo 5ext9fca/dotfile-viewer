@@ -1,0 +1,35 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "40"
+method = "pipx"
+packages = "ty"
+source_kind = "pypi-index"
+source_url = "https://pypi.org/simple"
+mirror_url = "https://mirrors.ustc.edu.cn/pypi/simple"
+install_depends_on = "pipx"
+
+[install."linux.dnf"]
+order = "40"
+method = "pipx"
+packages = "ty"
+source_kind = "pypi-index"
+source_url = "https://pypi.org/simple"
+mirror_url = "https://mirrors.ustc.edu.cn/pypi/simple"
+install_depends_on = "pipx"
+
+[install."linux.pacman"]
+order = "40"
+method = "pipx"
+packages = "ty"
+source_kind = "pypi-index"
+source_url = "https://pypi.org/simple"
+mirror_url = "https://mirrors.ustc.edu.cn/pypi/simple"
+install_depends_on = "pipx"
+
+[install."macos"]
+order = "20"
+method = "brew"
+packages = "ty"
+source_kind = "default"
+install_depends_on = "homebrew"

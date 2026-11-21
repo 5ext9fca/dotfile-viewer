@@ -1,0 +1,9 @@
+schema_version = 1
+
+[install."macos"]
+order = "1"
+method = "homebrew"
+source_kind = "download"
+source_url = "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+mirror_url = "https://mirrors.ustc.edu.cn/misc/brew-install.sh"
+install_depends_on = "xcode-command-line-tools"

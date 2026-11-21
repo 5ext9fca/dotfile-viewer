@@ -1,0 +1,33 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "20"
+method = "apt"
+packages = "fish"
+source_kind = "default"
+
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "fish"
+source_kind = "default"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "fish"
+source_kind = "default"
+
+[install."macos"]
+order = "20"
+method = "brew"
+packages = "fish"
+source_kind = "default"
+install_depends_on = "homebrew"
+
+[[config]]
+id = "settings"
+platforms = ["linux.apt", "linux.dnf", "linux.pacman", "macos"]
+root = "config_home"
+path = "fish"
+exclude = ["fish_variables"]

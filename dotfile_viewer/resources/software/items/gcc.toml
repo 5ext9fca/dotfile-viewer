@@ -1,0 +1,20 @@
+schema_version = 1
+
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "gcc"
+source_kind = "default"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "gcc"
+source_kind = "default"
+
+[install."macos"]
+order = "20"
+method = "brew"
+packages = "gcc"
+source_kind = "default"
+install_depends_on = "homebrew"

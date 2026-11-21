@@ -1,0 +1,13 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "20"
+method = "apt"
+packages = "libssl-dev"
+source_kind = "default"
+
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "openssl-devel"
+source_kind = "default"

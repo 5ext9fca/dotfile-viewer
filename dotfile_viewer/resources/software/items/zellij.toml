@@ -1,0 +1,39 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "40"
+method = "cargo"
+packages = "zellij"
+source_kind = "cargo-index"
+source_url = "sparse+https://index.crates.io/"
+mirror_url = "sparse+https://rsproxy.cn/index/"
+install_depends_on = "rust-toolchain cmake ninja pkg-config openssl-devel build-essential"
+
+[install."linux.dnf"]
+order = "40"
+method = "cargo"
+packages = "zellij"
+source_kind = "cargo-index"
+source_url = "sparse+https://index.crates.io/"
+mirror_url = "sparse+https://rsproxy.cn/index/"
+install_depends_on = "rust-toolchain cmake ninja pkg-config openssl-devel gcc gcc-cpp perl-findbin perl-ipc-cmd perl-file-compare perl-file-copy perl-digest-sha perl-time-piece"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "zellij"
+source_kind = "default"
+
+[install."macos"]
+order = "20"
+method = "brew"
+packages = "zellij"
+source_kind = "default"
+install_depends_on = "homebrew"
+
+[[config]]
+id = "settings"
+platforms = ["linux.apt", "linux.dnf", "linux.pacman", "macos"]
+root = "config_home"
+path = "zellij"
+exclude = []

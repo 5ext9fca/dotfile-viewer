@@ -1,0 +1,43 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "20"
+method = "apt"
+packages = "git"
+source_kind = "default"
+
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "git"
+source_kind = "default"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "git"
+source_kind = "default"
+
+[install."windows"]
+order = "30"
+methods = "winget manual"
+preferred_method = "winget"
+
+[install."windows/winget"]
+packages = "Git.Git"
+source_kind = "winget"
+source_repo = "winget"
+detect_files = "path:git.exe"
+
+[install."windows/manual"]
+detect_files = "program_files:Git/cmd/git.exe"
+
+[requires]
+"macos" = ["xcode-command-line-tools"]
+
+[[config]]
+id = "settings"
+platforms = ["linux.apt", "linux.dnf", "linux.pacman", "macos"]
+root = "config_home"
+path = "git"
+exclude = []

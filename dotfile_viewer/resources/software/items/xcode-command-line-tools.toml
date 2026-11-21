@@ -1,0 +1,6 @@
+schema_version = 1
+
+[install."macos"]
+order = "0"
+method = "xcode"
+source_kind = "default"

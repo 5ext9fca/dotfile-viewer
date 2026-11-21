@@ -1,0 +1,9 @@
+schema_version = 1
+
+[install."windows"]
+order = "20"
+method = "winget"
+packages = "Microsoft.PowerShell"
+source_kind = "winget"
+source_repo = "winget"
+detect_files = "path:pwsh.exe"

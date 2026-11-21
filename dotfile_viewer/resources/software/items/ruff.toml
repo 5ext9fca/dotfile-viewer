@@ -1,0 +1,29 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "40"
+method = "pipx"
+packages = "ruff"
+source_kind = "pypi-index"
+source_url = "https://pypi.org/simple"
+mirror_url = "https://mirrors.ustc.edu.cn/pypi/simple"
+install_depends_on = "pipx"
+
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "ruff"
+source_kind = "default"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "ruff"
+source_kind = "default"
+
+[install."macos"]
+order = "20"
+method = "brew"
+packages = "ruff"
+source_kind = "default"
+install_depends_on = "homebrew"

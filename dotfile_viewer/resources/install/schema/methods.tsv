@@ -1,0 +1,19 @@
+# method	platforms	required fields	source kinds	optional fields
+apt	linux.apt	packages	default apt-release	-
+dnf	linux.dnf	packages	default dnf-repo	-
+pacman	linux.pacman	packages	default pacman-repo	-
+cargo	linux.apt linux.dnf linux.pacman	packages	default cargo-index	-
+pipx	linux.apt linux.dnf linux.pacman	packages	default pypi-index	-
+brew	macos	packages	default brew-tap	-
+cask	macos	packages	default brew-tap	-
+script	linux.apt linux.dnf linux.pacman macos	source_url shell	download	args env
+rustup	linux.apt linux.dnf linux.pacman macos	packages components	default rust-dist	-
+apt-or-snap	linux.apt	packages fallback	default	-
+apt-repository	linux.apt	packages key_url keyring	apt-repo	-
+dnf-copr	linux.dnf	packages	copr	-
+xcode	macos		default	-
+homebrew	macos	source_url	download	-
+winget	windows	packages	winget	-
+msvc	windows	packages components workload	winget	-
+docker-ce	linux.apt linux.dnf	packages	download	-
+font-download	linux.apt linux.dnf linux.pacman	source_url font_files font_family	download	-

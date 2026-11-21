@@ -1,0 +1,53 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "60"
+method = "script"
+source_kind = "download"
+source_url = "https://opencode.ai/install"
+detect_files = "path:opencode"
+shell = "bash"
+args = "--no-modify-path"
+install_depends_on = "curl"
+
+[install."linux.dnf"]
+order = "60"
+method = "script"
+source_kind = "download"
+source_url = "https://opencode.ai/install"
+detect_files = "path:opencode"
+shell = "bash"
+args = "--no-modify-path"
+install_depends_on = "curl"
+
+[install."linux.pacman"]
+order = "60"
+method = "script"
+source_kind = "download"
+source_url = "https://opencode.ai/install"
+detect_files = "path:opencode"
+shell = "bash"
+args = "--no-modify-path"
+install_depends_on = "curl"
+
+[install."macos"]
+order = "60"
+method = "brew"
+packages = "anomalyco/tap/opencode"
+source_kind = "default"
+detect_files = "path:opencode"
+install_depends_on = "homebrew"
+
+[[config]]
+id = "cli"
+platforms = ["macos"]
+root = "config_home"
+path = "opencode/cli.json"
+exclude = []
+
+[[config]]
+id = "service"
+platforms = ["macos"]
+root = "config_home"
+path = "opencode/service.json"
+exclude = []

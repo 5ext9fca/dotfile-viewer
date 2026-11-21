@@ -1,0 +1,65 @@
+# 验证记录
+
+## 2026-11-21 · GitHub 公开首版
+
+macOS ARM64，Python 3.14.10。工作区与从暂存源码导出的副本都通过了 `./tests/check.sh --strict`，各 23 项。用合成配置验证了以下行为。
+
+- 外部编辑器产生非法 UTF-8 或遇到保存冲突时，CLI 分别返回 3 或 4，保留草稿的原始字节。
+- 逆序排列合法 v2 清单，预览和应用均先处理父目录。首次应用成功，再次应用跳过相同内容并保留额外文件。遍历路径、重复或大小写冲突的归档成员、错误摘要和特殊文件类型均被拒绝。
+- 在原子替换后的首次读取注入错误，已有文件恢复备份，本次新建的文件撤回。目标被外部改写、替换成内容相同的新文件或持续不可读时，失败报告记录人工检查状态并保留现场。注入最终报告写入失败后也能恢复原文件。
+- 从导出的源码离线构建并安装 wheel，在全新的 Python 3.14 环境、checkout 之外验证 CLI 和模块入口输出一致，公共 API v1 可导入。wheel 的 84 个包内文件与受跟踪源码逐字节一致，54 个软件声明、8 个 profile 和 MIT 许可均已校验，无第三方运行时依赖。
+
+以下 11 月 16 日记录中的前三项故障已在本轮修复，第五项所列归档和故障路径已补测。预览版本确认仍由 Python API 的 expected_version 参数提供。本轮未执行原生 Linux、Windows 或 WSL 验证，也未重跑 syncronizer 集成测试。
+
+## 2026-11-16 · 更名为 dotfile-viewer 与功能核对
+
+环境：macOS ARM64，Python 3.14.10。发行包与 CLI 改为 `dotfile-viewer`，实现包及公共 API 改为 `dotfile_viewer`；同步修改 syncronizer 的依赖、Python 导入、Bash/PowerShell 调用和文档，不保留旧名称代码兼容层。既有备份目录、journal、`DOTFILES_*` 环境变量及共享锁路径不变。
+
+- 卸载旧发行包，离线安装新包后运行 `./tests/check.sh --strict`：18 项隔离测试通过。
+- 从干净暂存源码构建 wheel，在全新 Python 3.14 环境中离线安装，并在 checkout 外使用 `python -I` 验证：新 CLI、模块入口和公共 API 可用；旧导入和旧 CLI 不存在；无第三方运行时依赖。
+- wheel 中实现和资源与源码逐文件一致；54 个默认声明、五个平台依赖图、8 个 profile、schema 和 Bash/PowerShell 锁适配器检查通过。声明内容和 schema 版本没有变化。
+- syncronizer 首次可编辑安装因环境缺少 setuptools 失败；改用已构建的本地 wheel 离线安装成功。`./tests/check.sh --strict`：30 项检查通过、0 失败、24 项按平台跳过；其中 Python 核心测试 163 项，162 通过、1 项因 PowerShell 不可用跳过。包含安装/配置组合快照与共享锁验证，详情见 syncronizer 的 `tests/acceptance.md`。
+- 两项目现有虚拟环境均确认新发行包/API 可用、旧导入不存在；9 个相关 Bash 脚本语法及两仓库 `git diff --check` 通过。当前环境未提供 ShellCheck 或 PowerShell。
+- syncronizer macOS dry-run：沙箱内 4 项因默认备份父目录的可写性预检受限而失败；在沙箱外重跑后 4 项全部通过、4 项 Linux 检查按平台跳过，未安装软件或应用配置。
+- README、迁移、架构、声明编写说明和两项目 AGENTS.md 已按新名称复核；历史验收记录保留当时名称。syncronizer README 遗留的 Web UI 描述同步移除。
+
+### 当前功能与待修复项
+
+核心能力均有实现：声明/profile 加载与选择、本机配置查看和文本编辑、快照 v2 导出/校验/应用、备份与原子发布、共享部署锁。没有发现显式 TODO 或 NotImplemented 功能占位。下列问题通过本轮临时合成夹具复现，属于既有实现缺口，本次更名没有修改其行为：
+
+1. **外部编辑器草稿保护**（`dotfile_viewer/cli.py:run`）：模拟编辑器成功退出但写入非 UTF-8 字节，`file.read_text` 抛错后 TemporaryDirectory 删除草稿；保存失败处理只覆盖后续 `editor.save`。需将草稿读取/校验失败纳入保留流程并测试。
+2. **快照条目顺序**（`dotfile_viewer/snapshot.py:Snapshot.parse`、`dotfile_viewer/application.py:SnapshotSession.apply`）：反转合法 manifest 的 entries，归档验证通过；应用到空目录时子条目先创建父目录，后面的父目录条目报 `Target appeared`，已有文件落盘。需在应用前规范化父子顺序，或在验证阶段拒绝不支持的顺序，避免由归档排列引发部分应用。
+3. **发布后读取失败的恢复与记录**（`dotfile_viewer/files.py:publish_file`）：在 `os.replace` 成功后的首次 `observe(target)` 注入读取失败，`published` 仍为空，恢复分支未执行；目标保持新内容，原始备份仍在，报告停留在 prepared。需补充能确认本次输出身份时的安全恢复，以及无法确认时的明确失败记录；不得覆盖外部写入。
+4. **CLI 预览版本确认**：Python API 已支持 `SnapshotSession.apply(expected_version=...)`，CLI `snapshot apply` 尚未暴露该参数。若需要将两次 CLI 调用的预览与应用关联，可补充参数透传及冲突测试；这不提供跨调用归档固定保证。
+5. **验收覆盖**：现有测试有冲突、硬链接、排除、备份失败、替换失败和共享锁用例，但恶意归档覆盖主要只有旧版本拒绝；需扩展路径穿越、重复/大小写冲突成员、哈希损坏、恶意类型及上述三个故障路径的自动化测试。
+
+Web UI、安装器、旧 v1 快照和历史 journal 恢复不是待实现功能，均明确排除在项目范围之外。未运行原生 Linux、Windows、WSL 验证；平台图检查不代表原生覆盖。未采集或修改真实用户配置。
+
+## 2026-11-16 · 移除 Web UI
+
+环境：macOS ARM64，Python 3.14.10。按用户要求移除 Web 服务、静态资源、`serve` 命令及 Web 专用运行时和测试依赖；CLI、公共 Python API 和包内声明保留。以下旧迁移记录仅描述当时状态。
+
+- 构建 wheel，并在全新的 Python 3.14 虚拟环境中离线安装；环境不含 FastAPI、Pydantic、AnyIO、Uvicorn 或 HTTPX。
+- 使用该环境设置 `DOTFILES_PYTHON`，运行 `./tests/check.sh --strict`：18 项隔离测试全部通过，覆盖配置编辑、CLI 写入与冲突、备份和替换失败、硬链接、排除与链接、快照往返、预览冲突、归档固定及部署锁。删除 3 项 Web 专用测试，保留原先位于 Web 测试类中的 CLI 写入测试。
+- wheel 内容检查通过：无 `web.py` 或静态资源，无第三方依赖或测试 extra；软件声明、profile、schema 和共享锁适配器齐全。在 checkout 外通过隔离导入验证公共 API 和默认声明可用；安装后的 CLI 帮助不再包含 `serve`，调用该命令返回参数错误（退出码 2）。
+- README、架构、迁移、测试说明和 AGENTS.md 已同步；`git diff --check` 通过。
+
+未运行原生 Linux、Windows、WSL 检查；未采集或修改真实用户配置。本轮未重新运行 syncronizer 集成测试。
+
+## 2026-11-16 · Viewer 迁移与 Python 3.14
+
+环境：macOS ARM64，Python 3.14.10，FastAPI 0.163.1、Pydantic 2.14.3、AnyIO 4.16.0。两个 checkout 的旧 3.15 虚拟环境移到临时目录，重新创建 3.14 环境；没有修改受管理软件安装项或本机配置。
+
+- `./tests/check.sh --strict`：21 项隔离测试通过，覆盖目录/profile、编辑和脚本写入、版本冲突、换行、备份失败、替换失败、硬链接、排除与链接、快照 v2、归档固定、应用幂等、Web API 身份校验及快照流程。
+- `node --check dotfiles_viewer/static/app.js`、Bash 入口语法、Python compileall、`git diff --check`：通过。
+- 五个平台的统一声明及依赖图解析通过：linux.apt、linux.dnf、linux.pacman、macos、windows。未据此声明 Linux/Windows 原生执行通过。
+- Viewer wheel 已构建并检查统一声明、profile、schema、共享锁适配器和静态资源；不含配置正文或旧安装核心。
+- syncronizer 集成：macOS 默认安装 dry-run 通过；24 项快照测试通过，包含伪 Homebrew 安装失败阻断配置和成功后应用；运行时测试 10 项，9 通过，PowerShell 不可用而跳过。完整软件集合的 macOS 上游源 dry-run 同样通过。
+
+初次验证使用原有 Python 3.15 alpha，AnyIO sentinel 和 Pydantic 二进制 ABI 导致 Web 导入失败；按用户后续要求迁至 3.14，恢复 FastAPI/Pydantic/AnyIO 后通过。初次 syncronizer 回归还发现旧版本测试值、配置阶段 sidecar 格式和声明 schema 路径，均已修正并重跑相关测试。
+
+浏览器控制服务不可用，未完成实际浏览器视觉验收；隔离本机预览服务已关闭。Web UI 按用户后续要求保留但不再是必需交付项。本轮未运行原生 Linux、Windows、WSL 检查；未安装真实软件、未采集真实用户配置，也未执行实际本机配置应用。
+
+最终联动验收：syncronizer 完整 core 调用初次为 28 个检查通过、2 个失败、24 个因平台不适用跳过。失败项是旧会话提示断言，以及运行期间更新过的备份目录断言；修正后 `tests/execution-contract.sh` 重跑通过，最终 Python 核心测试 163 项（162 通过、PowerShell 不可用跳过 1 项）。因此适用检查均已有通过记录，未将初次完整调用描述为全绿。
+
+最终 wheel 与 CLI、应用及共享锁源码逐字节一致；从临时目录解包并在隔离 Python 导入路径下加载，成功读取 54 个默认软件声明，确认不依赖源 checkout。共享锁元数据读取失败时不留下锁目录的附加检查通过。文档复核包括两项目 README、AGENTS、架构、配置、迁移和测试说明；旧路径及旧恢复入口提示已更新。

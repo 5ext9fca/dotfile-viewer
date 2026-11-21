@@ -1,0 +1,9 @@
+# root	platforms	kinds
+home	linux.apt linux.dnf linux.pacman macos windows	file directory
+path	linux.apt linux.dnf linux.pacman macos windows	file
+root	linux.apt linux.dnf linux.pacman macos	file directory
+applications	macos	file directory
+brew_prefix	macos	file directory
+program_files	windows	file directory
+program_files_x86	windows	file directory
+local_app_data	windows	file directory

@@ -1,0 +1,26 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "20"
+method = "apt"
+packages = "poppler-utils"
+source_kind = "default"
+
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "poppler-utils"
+source_kind = "default"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "poppler"
+source_kind = "default"
+
+[install."macos"]
+order = "20"
+method = "brew"
+packages = "poppler"
+source_kind = "default"
+install_depends_on = "homebrew"

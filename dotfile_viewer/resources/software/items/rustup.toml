@@ -1,0 +1,26 @@
+schema_version = 1
+
+[install."linux.pacman"]
+order = "25"
+method = "pacman"
+packages = "rustup"
+source_kind = "default"
+
+[install."macos"]
+order = "25"
+method = "brew"
+packages = "rustup"
+source_kind = "default"
+install_depends_on = "homebrew"
+
+[install."linux.apt"]
+order = "25"
+method = "apt"
+packages = "rustup"
+source_kind = "default"
+
+[install."linux.dnf"]
+order = "25"
+method = "dnf"
+packages = "rustup"
+source_kind = "default"

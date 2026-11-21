@@ -1,0 +1,19 @@
+schema_version = 1
+
+[install."linux.dnf"]
+order = "5"
+method = "dnf"
+packages = "curl"
+source_kind = "default"
+
+[install."linux.pacman"]
+order = "5"
+method = "pacman"
+packages = "curl"
+source_kind = "default"
+
+[install."linux.apt"]
+order = "5"
+method = "apt"
+packages = "curl"
+source_kind = "default"

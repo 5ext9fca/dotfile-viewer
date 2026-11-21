@@ -1,0 +1,65 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "30"
+method = "docker-ce"
+packages = "docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
+source_kind = "download"
+source_url = "https://download.docker.com/linux"
+install_depends_on = "ca-certificates curl"
+environments = "native"
+provides = "docker"
+wsl_provider = "windows-docker-desktop"
+
+[install."linux.dnf"]
+order = "30"
+method = "docker-ce"
+packages = "docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
+source_kind = "download"
+source_url = "https://download.docker.com/linux"
+install_depends_on = "curl"
+environments = "native"
+provides = "docker"
+wsl_provider = "windows-docker-desktop"
+
+[install."linux.pacman"]
+order = "30"
+method = "pacman"
+packages = "docker"
+source_kind = "default"
+environments = "native"
+provides = "docker"
+wsl_provider = "windows-docker-desktop"
+
+[install."macos"]
+order = "30"
+methods = "cask manual"
+preferred_method = "cask"
+environments = "native"
+provides = "docker"
+
+[install."macos/cask"]
+depends_on = "homebrew"
+packages = "docker-desktop"
+source_kind = "default"
+detect_dirs = "brew_prefix:Caskroom/docker-desktop;applications:Docker.app"
+
+[install."macos/manual"]
+detect_dirs = "applications:Docker.app"
+
+[install."windows"]
+order = "40"
+method = "winget"
+packages = "Docker.DockerDesktop"
+source_kind = "winget"
+source_repo = "winget"
+environments = "native"
+provides = "docker"
+
+# Capture daemon settings only, not CLI credentials or runtime state.
+[[config]]
+id = "daemon-settings"
+platforms = ["macos"]
+root = "home"
+path = ".docker/daemon.json"
+exclude = []

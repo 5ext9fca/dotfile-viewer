@@ -1,0 +1,56 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "20"
+methods = "script manual"
+preferred_method = "script"
+environments = "native"
+
+[install."linux.apt/script"]
+source_kind = "download"
+source_url = "https://raw.githubusercontent.com/getnf/getnf/main/getnf"
+shell = "bash"
+args = "-i JetBrainsMono"
+detect_dirs = "home:.local/share/fonts/JetBrainsMono"
+depends_on = "curl tar xz fontconfig"
+
+[install."linux.apt/manual"]
+detect_files = "home:.local/share/fonts/JetBrainsMonoNerdFont-Regular.ttf"
+
+[install."linux.dnf"]
+order = "20"
+methods = "script manual"
+preferred_method = "script"
+environments = "native"
+
+[install."linux.dnf/script"]
+source_kind = "download"
+source_url = "https://raw.githubusercontent.com/getnf/getnf/main/getnf"
+shell = "bash"
+args = "-i JetBrainsMono"
+detect_dirs = "home:.local/share/fonts/JetBrainsMono"
+depends_on = "curl tar xz fontconfig"
+
+[install."linux.dnf/manual"]
+detect_files = "home:.local/share/fonts/JetBrainsMonoNerdFont-Regular.ttf"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "ttf-jetbrains-mono-nerd"
+source_kind = "default"
+environments = "native"
+
+[install."macos"]
+order = "20"
+method = "cask"
+packages = "font-jetbrains-mono-nerd-font"
+source_kind = "default"
+install_depends_on = "homebrew"
+
+[install."windows"]
+order = "20"
+method = "winget"
+packages = "DEVCOM.JetBrainsMonoNerdFont"
+source_kind = "winget"
+source_repo = "winget"

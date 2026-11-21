@@ -1,0 +1,41 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "30"
+method = "rustup"
+packages = "stable"
+source_kind = "default"
+components = "rustfmt,rust-analyzer"
+depends_on = "rustup"
+
+[install."linux.dnf"]
+order = "30"
+method = "rustup"
+packages = "stable"
+source_kind = "default"
+components = "rustfmt,rust-analyzer"
+depends_on = "rustup"
+
+[install."linux.pacman"]
+order = "30"
+method = "rustup"
+packages = "stable"
+source_kind = "default"
+components = "rustfmt,rust-analyzer"
+depends_on = "rustup"
+
+[install."macos"]
+order = "30"
+method = "rustup"
+packages = "stable"
+source_kind = "default"
+components = "rustfmt,rust-analyzer"
+depends_on = "rustup"
+
+# Do not capture credentials, downloaded packages or toolchain binaries.
+[[config]]
+id = "cargo-settings"
+platforms = ["macos"]
+root = "home"
+path = ".cargo/config.toml"
+exclude = []

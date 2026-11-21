@@ -1,0 +1,34 @@
+schema_version = 1
+
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "helix"
+source_kind = "default"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "helix"
+source_kind = "default"
+
+[install."macos"]
+order = "20"
+method = "brew"
+packages = "helix"
+source_kind = "default"
+install_depends_on = "homebrew"
+
+[install."linux.apt"]
+order = "20"
+method = "apt-or-snap"
+packages = "helix hx"
+source_kind = "default"
+fallback = "helix"
+
+[[config]]
+id = "settings"
+platforms = ["linux.apt", "linux.dnf", "linux.pacman", "macos"]
+root = "config_home"
+path = "helix"
+exclude = []

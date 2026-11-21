@@ -1,0 +1,16 @@
+schema_version = 1
+
+[install."windows"]
+order = "10"
+method = "winget"
+packages = "Microsoft.WindowsTerminal"
+source_kind = "winget"
+source_repo = "winget"
+detect_files = "path:wt.exe"
+
+[[config]]
+id = "settings"
+platforms = ["windows"]
+root = "local_app_data"
+path = "Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState/settings.json"
+exclude = []

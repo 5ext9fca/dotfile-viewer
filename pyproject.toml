@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dotfile-viewer"
+version = "0.2.0"
+description = "Local configuration editor, software catalog and snapshot API"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.14"
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/5ext9fca/dotfile-viewer"
+
+[project.scripts]
+dotfile-viewer = "dotfile_viewer.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["dotfile_viewer*"]
+
+[tool.setuptools.package-data]
+dotfile_viewer = ["resources/**/*"]
