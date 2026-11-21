@@ -63,6 +63,18 @@ class ViewerTest(Fixture):
                     self.assertTrue(fonts <= api.select(catalog, platform, 'native', roots).keys())
                 self.assertTrue(fonts.isdisjoint(api.select(catalog, platform, 'wsl', ['all'])))
 
+    def test_windows_desktop_font_selection(self):
+        catalog = api.load_catalog()
+        fonts = {'sf-pro-text', 'pingfang-sc'}
+        self.assertEqual(set(api.selection(profile='windows-fonts')), fonts)
+        for profile in ('windows', 'windows-full', 'windows-fonts'):
+            selected = api.select(catalog, 'windows', 'native', api.selection(profile=profile))
+            self.assertTrue(fonts <= selected.keys())
+        for name in fonts:
+            rules = catalog[name]['install']
+            for field in ('method', 'source_url', 'font_files', 'font_family'):
+                self.assertEqual(rules['windows'][field], rules['linux.apt'][field])
+
     def test_edit_preserves_newlines_and_backup(self):
         result = self.save('updated\n')
         self.assertEqual((self.config / 'demo/settings').read_bytes(), b'updated\r\n')

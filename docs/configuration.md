@@ -54,6 +54,8 @@ macos = ["xcode-command-line-tools"]
 
 原生 Linux 的默认 profile 包含 `sf-pro-text` 和 `pingfang-sc`，也可用 `linux-fonts` 只选择这两款字体。桌面采用 SF Pro Text 作为西文及数字字体，简中回退选静态 PingFang SC；具体匹配顺序由本机配置决定。`desktop-fonts` 选择两者及既有的 Noto CJK、JetBrains Mono 依赖，便于目标机恢复相同的字体偏好。
 
+Windows 的默认、完整及 `windows-fonts` profile 也选择同一组字体。`windows-fonts` 只选 `sf-pro-text` 和 `pingfang-sc`。Windows 的经典桌面字体和 GDI 回退由本机设置控制；这些注册表项不属于快照的配置文件。
+
 ## Profile v3
 
 ```ini

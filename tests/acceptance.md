@@ -1,5 +1,13 @@
 # 验证记录
 
+## 2026-11-22 · Windows 桌面字体声明
+
+原生 Windows 11 Pro x64（26300），Python 3.14.0。使用 syncronizer checkout 的虚拟环境和本仓库的 editable 安装。
+
+- `api.load_catalog()` 通过全平台图校验。Linux 和 Windows 两个字体选择测试通过，验证 Windows 默认、完整和字体专用 profile 的选择，并逐项比较 Windows 与 Linux 的字体来源、文件和家族。
+- `tests/check.ps1 -Strict` 运行 25 项，报告 6 个断言失败、9 个错误及 2 项跳过。对修改前 HEAD 单独导出的源码重跑，24 项中也报告 5 个断言失败、9 个错误及 2 项跳过，涉及 Windows 文件状态、快照和符号链接。未运行其他原生平台。
+- 已复核两仓库的 README、AGENTS、配置语义和安装说明。Windows 的机器级 GDI 设置由操作者单独应用，Viewer 的归档格式保持原有的文件语义。
+
 ## 2026-11-22 · 原生 Linux 界面字体
 
 Fedora 45 KDE、x86_64、Python 3.14.10。使用安装器 checkout 的 Python 通过 editable 安装本仓库。运行 `DOTFILES_PYTHON=/path/to/.venv/bin/python ./tests/check.sh --strict`，24 项通过。
