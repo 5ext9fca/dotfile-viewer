@@ -54,7 +54,7 @@ dotfile-viewer snapshot apply --snapshot /existing/path/settings.zip
 
 ## 统一声明
 
-缺省声明随包分发；源文件位于 `src/dotfile_viewer/resources/software/items/`，profile 位于 `src/dotfile_viewer/resources/workflow/profiles/`。不保存配置正文。
+缺省声明随包分发；源文件位于 `src/resources/software/items/`，profile 位于 `src/resources/workflow/profiles/`。不保存配置正文。
 
 需要单独维护声明时，准备包含 `software/items/` 和 `workflow/profiles/` 的目录：
 

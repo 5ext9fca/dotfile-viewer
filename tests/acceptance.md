@@ -95,3 +95,7 @@ macOS ARM64、Python 3.14。合并后运行 `./tests/check.sh --strict`（通过
 ## 2026-11-27 · 根目录 CLI 与 src 布局
 
 macOS ARM64、Python 3.14。可编辑安装后运行 `./tests/check.sh --strict`，27 项全部通过。从仓库外调用根目录入口和安装后的命令，两者的 `list --json` 输出逐字节一致。公共 API 从 `src/dotfile_viewer/api.py` 加载。本轮未在 Linux、WSL 或 Windows 原生运行。
+
+## 2026-11-27 · 源码直接放在 src
+
+macOS ARM64、Python 3.14.10。重新可编辑安装后，`./tests/check.sh --strict` 的 27 项测试全部通过。另将 wheel 离线安装到全新环境，在仓库外通过 `dotfile_viewer.api` 加载默认声明。wheel 命令与项目根目录入口的 `list --json` 输出逐字节一致。本轮未在 Linux、WSL 或 Windows 原生验证。
