@@ -39,12 +39,14 @@ dotfile-viewer write fish settings config.fish --from candidate.fish --expected-
 ## 快照
 
 ```bash
-dotfile-viewer snapshot export --profile macos --output /existing/path/settings.zip --dry-run
+dotfile-viewer snapshot export --profile macos --output /existing/path/settings.zip --dry-run --json
 dotfile-viewer snapshot export --software fish helix --output /existing/path/settings.zip
 dotfile-viewer snapshot inspect --snapshot /existing/path/settings.zip
 dotfile-viewer snapshot apply --snapshot /existing/path/settings.zip --dry-run
 dotfile-viewer snapshot apply --snapshot /existing/path/settings.zip
 ```
+
+`snapshot export` 成功时默认静默，包括 `--dry-run`。添加 `--json` 可将快照清单打印到标准输出。
 
 快照包含所选软件及依赖的声明、普通文件和空目录；二进制文件不受编辑器的文本限制。采集前停止会写配置的应用。缺失、不可读、未排除链接及检测到的采集变化会导致失败。输出不覆盖已有文件。
 

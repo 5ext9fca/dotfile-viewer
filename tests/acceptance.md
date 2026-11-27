@@ -99,3 +99,7 @@ macOS ARM64、Python 3.14。可编辑安装后运行 `./tests/check.sh --strict`
 ## 2026-11-27 · 源码直接放在 src
 
 macOS ARM64、Python 3.14.10。重新可编辑安装后，`./tests/check.sh --strict` 的 27 项测试全部通过。另将 wheel 离线安装到全新环境，在仓库外通过 `dotfile_viewer.api` 加载默认声明。wheel 命令与项目根目录入口的 `list --json` 输出逐字节一致。本轮未在 Linux、WSL 或 Windows 原生验证。
+
+## 2026-11-27 · 导出默认静默
+
+macOS ARM64、Python 3.14。运行 `./tests/check.sh --strict`，28 项全部通过。新增用例验证实际导出和预览在默认模式下标准输出为空，指定 `--json` 时输出清单，仅实际导出创建归档。本轮未在 Linux、WSL 或 Windows 原生验证。

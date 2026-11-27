@@ -33,7 +33,7 @@ def parser():
     choices.add_argument('--profile'); choices.add_argument('--software', nargs='+')
     export.add_argument('--output', type=Path, required=True)
     export.add_argument('--dry-run', action='store_true')
-    export.add_argument('--json', action='store_true')
+    export.add_argument('--json', action='store_true', help='Print the snapshot manifest to stdout')
     for name in ('inspect', 'apply'):
         cmd = snap.add_parser(name)
         cmd.add_argument('--snapshot', required=True, type=Path)
@@ -47,8 +47,9 @@ def parser():
 def run(args):
     if args.command == 'snapshot':
         if args.action == 'export':
-            return api.export_snapshot(args.output, catalog=args.catalog, profile=args.profile,
-                                       software=args.software, dry=args.dry_run).document()
+            snapshot = api.export_snapshot(args.output, catalog=args.catalog, profile=args.profile,
+                                           software=args.software, dry=args.dry_run)
+            return snapshot.document() if args.json else None
         if args.action == 'inspect':
             return api.verify_archive(args.snapshot).document()
         return api.apply_snapshot(args.snapshot, dry=args.dry_run, detach=args.detach_hardlink)
