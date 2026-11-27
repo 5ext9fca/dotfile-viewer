@@ -6,6 +6,14 @@ Fedora 45 KDE、原生 x86_64、Python 3.14.10。用 `api.load_catalog()` 校验
 
 Viewer checkout 缺少自身的 .venv，首次严格检查未启动。将 DOTFILES_PYTHON 指向安装器已有的 Python 3.14 后重跑 `./tests/check.sh --strict`，24 项通过。在安装器运行 `./install/linux.sh --dry-run --yes` 和追加 `--profile linux-full` 的预览，沙箱内均在 install-state 查询失败；原生环境下重跑均成功，两次都发现 /usr/bin/tailscale 并跳过安装。未执行真实安装、登录或其他系统的原生预览。
 
+## 2026-11-22 · Windows 桌面字体声明
+
+原生 Windows 11 Pro x64（26300），Python 3.14.0。使用 syncronizer checkout 的虚拟环境和本仓库的 editable 安装。
+
+- `api.load_catalog()` 通过全平台图校验。Linux 和 Windows 两个字体选择测试通过，验证 Windows 默认、完整和字体专用 profile 的选择，并逐项比较 Windows 与 Linux 的字体来源、文件和家族。
+- `tests/check.ps1 -Strict` 运行 25 项，报告 6 个断言失败、9 个错误及 2 项跳过。对修改前 HEAD 单独导出的源码重跑，24 项中也报告 5 个断言失败、9 个错误及 2 项跳过，涉及 Windows 文件状态、快照和符号链接。未运行其他原生平台。
+- 已复核两仓库的 README、AGENTS、配置语义和安装说明。Windows 的机器级 GDI 设置由操作者单独应用，Viewer 的归档格式保持原有的文件语义。
+
 ## 2026-11-22 · 原生 Linux 界面字体
 
 Fedora 45 KDE、x86_64、Python 3.14.10。使用安装器 checkout 的 Python 通过 editable 安装本仓库。运行 `DOTFILES_PYTHON=/path/to/.venv/bin/python ./tests/check.sh --strict`，24 项通过。
@@ -77,3 +85,15 @@ Web UI、安装器、旧 v1 快照和历史 journal 恢复不是待实现功能�
 最终联动验收：syncronizer 完整 core 调用初次为 28 个检查通过、2 个失败、24 个因平台不适用跳过。失败项是旧会话提示断言，以及运行期间更新过的备份目录断言；修正后 `tests/execution-contract.sh` 重跑通过，最终 Python 核心测试 163 项（162 通过、PowerShell 不可用跳过 1 项）。因此适用检查均已有通过记录，未将初次完整调用描述为全绿。
 
 最终 wheel 与 CLI、应用及共享锁源码逐字节一致；从临时目录解包并在隔离 Python 导入路径下加载，成功读取 54 个默认软件声明，确认不依赖源 checkout。共享锁元数据读取失败时不留下锁目录的附加检查通过。文档复核包括两项目 README、AGENTS、架构、配置、迁移和测试说明；旧路径及旧恢复入口提示已更新。
+
+## 2026-11-27：Unix 默认 shell 切换为 zsh
+
+macOS ARM64，Python 3.14.10。用相邻 syncronizer 项目的 Python 运行 `./tests/check.sh --strict`，初次 23 项通过；增加 profile 与快照用例后，25 项全部通过。使用合成 HOME 验证 macOS zsh 的五项采集路径、应用幂等性及未采集的历史、会话和生成文件。测试通过公共 API 读取完整默认 catalog 和普通、完整 Unix profile。同步器使用修改后的 catalog 对两个 macOS profile 执行 dry-run 成功；未做原生 Linux、WSL、Windows 安装。已复核 README、配置指南和 AGENTS.md。
+
+## Unix 交互工具与配置采集（2026-11-27）
+
+macOS ARM64，Python 3.14。通过 DOTFILES_PYTHON 指向现有解释器运行 `./tests/check.sh --strict`，25 个用例全部通过。三个 Unix 普通 profile 均包含 Atuin、Starship、zoxide 和 fzf。合成 HOME 验证 macOS 配置往返与重复应用，生成脚本、历史及密钥未被采集。未运行 Linux、WSL 或 Windows 原生安装。已复核 README、声明指南、配置文档与 AGENTS.md。
+
+## 2026-11-27 · 合并 Unix 工具与桌面字体默认选择
+
+macOS ARM64、Python 3.14。合并后运行 `./tests/check.sh --strict`（通过 DOTFILES_PYTHON 指定解释器），27 项通过，包含 Unix 工具及 Linux、Windows 字体选择。未在 Linux 或 Windows 原生运行。

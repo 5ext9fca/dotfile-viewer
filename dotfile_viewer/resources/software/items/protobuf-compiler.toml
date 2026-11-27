@@ -1,0 +1,7 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "20"
+method = "apt"
+packages = "protobuf-compiler"
+source_kind = "default"

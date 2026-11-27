@@ -1,0 +1,8 @@
+schema_version = 1
+
+[install."macos"]
+order = "20"
+method = "brew"
+packages = "antidote"
+source_kind = "default"
+install_depends_on = "homebrew"

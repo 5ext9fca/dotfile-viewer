@@ -54,6 +54,8 @@ macos = ["xcode-command-line-tools"]
 
 原生 Linux 的默认 profile 包含 `sf-pro-text` 和 `pingfang-sc`，也可用 `linux-fonts` 只选择这两款字体。桌面采用 SF Pro Text 作为西文及数字字体，简中回退选静态 PingFang SC；具体匹配顺序由本机配置决定。`desktop-fonts` 选择两者及既有的 Noto CJK、JetBrains Mono 依赖，便于目标机恢复相同的字体偏好。
 
+Windows 的默认、完整及 `windows-fonts` profile 也选择同一组字体。`windows-fonts` 只选 `sf-pro-text` 和 `pingfang-sc`。Windows 的经典桌面字体和 GDI 回退由本机设置控制；这些注册表项不属于快照的配置文件。
+
 ## Profile v3
 
 ```ini
@@ -68,3 +70,5 @@ software=fish git helix
 ## 版本与兼容
 
 软件声明 v1 和 profile v3 保持不变；快照使用 v2，不接受旧 v1。历史 journal 恢复入口已移除，已有资料不删除。安装执行规则由 syncronizer 维护。
+
+macOS、Linux 和 WSL 的普通 profile 选择 Zsh、fzf、Starship、Atuin 和 zoxide。macOS 使用系统 Zsh 与 Homebrew Antidote，并采集 Zsh 启动文件、插件清单、zsh 配置目录、缩写、Starship 和 Atuin 的配置文件。历史数据库、主目录中的静态插件脚本和下载缓存不在采集范围内。Linux 和 WSL 的 APT 分支使用 Cargo 构建 Atuin 和 Starship。Unix 完整 profile 选择 all，采集时也需要 Fish 配置。

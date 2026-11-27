@@ -53,6 +53,39 @@ class ViewerTest(Fixture):
         self.assertIn('fish', api.load_catalog())
         self.assertEqual(len(self.editor.configurations()), 1)
 
+    def test_unix_shell_defaults(self):
+        for name in ('macos', 'linux', 'wsl'):
+            selected = api.selection(profile=name)
+            self.assertIn('zsh', selected)
+            self.assertTrue({'fzf', 'starship', 'atuin', 'zoxide'} <= set(selected))
+            self.assertNotIn('fish', selected)
+            self.assertEqual('antidote' in selected, name == 'macos')
+            self.assertEqual(api.selection(profile=name + '-full'), ['all'])
+
+    def test_macos_zsh_snapshot(self):
+        source = self.root / 'source'
+        destination = self.root / 'destination'
+        def roots(directory):
+            return {'home': str(directory), 'config_home': str(directory / '.config')}
+
+        tracked = ['.zshenv', '.config/atuin/config.toml', '.config/starship.toml',
+                   '.config/zsh/regenerate.zsh', '.zshrc', '.zprofile', '.zsh_plugins.txt', '.config/zsh/functions/demo',
+                   '.config/zsh-abbr/user-abbreviations']
+        private = ['.atuin/data/history.db', '.config/atuin/key', '.zsh_history', '.zsh_sessions/session', '.zsh_plugins.zsh']
+        for relative in tracked + private:
+            path = source / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(relative)
+        api.export_snapshot(self.archive, software=['zsh', 'atuin', 'starship'], platform=self.platform, roots=roots(source))
+        with api.SnapshotSession(self.archive, platform=self.platform, roots=roots(destination),
+                                 backup=self.root / 'backup') as session:
+            self.assertEqual(session.apply()['status'], 'applied')
+            self.assertEqual(session.apply()['status'], 'unchanged')
+        for relative in tracked:
+            self.assertEqual((destination / relative).read_text(), relative)
+        for relative in private:
+            self.assertFalse((destination / relative).exists())
+
     def test_linux_desktop_font_selection(self):
         catalog = api.load_catalog()
         fonts = {'sf-pro-text', 'pingfang-sc'}
@@ -62,6 +95,18 @@ class ViewerTest(Fixture):
                 for roots in (api.selection(profile='linux'), ['desktop-fonts']):
                     self.assertTrue(fonts <= api.select(catalog, platform, 'native', roots).keys())
                 self.assertTrue(fonts.isdisjoint(api.select(catalog, platform, 'wsl', ['all'])))
+
+    def test_windows_desktop_font_selection(self):
+        catalog = api.load_catalog()
+        fonts = {'sf-pro-text', 'pingfang-sc'}
+        self.assertEqual(set(api.selection(profile='windows-fonts')), fonts)
+        for profile in ('windows', 'windows-full', 'windows-fonts'):
+            selected = api.select(catalog, 'windows', 'native', api.selection(profile=profile))
+            self.assertTrue(fonts <= selected.keys())
+        for name in fonts:
+            rules = catalog[name]['install']
+            for field in ('method', 'source_url', 'font_files', 'font_family'):
+                self.assertEqual(rules['windows'][field], rules['linux.apt'][field])
 
     def test_edit_preserves_newlines_and_backup(self):
         result = self.save('updated\n')

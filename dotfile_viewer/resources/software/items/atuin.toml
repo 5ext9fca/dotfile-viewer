@@ -1,0 +1,35 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "40"
+method = "cargo"
+packages = "atuin"
+source_kind = "cargo-index"
+source_url = "sparse+https://index.crates.io/"
+mirror_url = "sparse+https://rsproxy.cn/index/"
+install_depends_on = "rust-toolchain cmake ninja pkg-config openssl-devel build-essential protobuf-compiler"
+
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "atuin"
+source_kind = "default"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "atuin"
+source_kind = "default"
+
+[install."macos"]
+order = "20"
+method = "brew"
+packages = "atuin"
+source_kind = "default"
+install_depends_on = "homebrew"
+
+[[config]]
+id = "settings"
+platforms = ["macos"]
+root = "config_home"
+path = "atuin/config.toml"

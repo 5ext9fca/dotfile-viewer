@@ -30,3 +30,9 @@ method = "brew"
 packages = "starship"
 source_kind = "default"
 install_depends_on = "homebrew"
+
+[[config]]
+id = "settings"
+platforms = ["macos"]
+root = "config_home"
+path = "starship.toml"
