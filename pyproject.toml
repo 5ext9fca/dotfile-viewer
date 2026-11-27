@@ -19,6 +19,7 @@ Repository = "https://github.com/5ext9fca/dotfile-viewer"
 dotfile-viewer = "dotfile_viewer.cli:main"
 
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["dotfile_viewer*"]
 
 [tool.setuptools.package-data]

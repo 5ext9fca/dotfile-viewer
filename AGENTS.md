@@ -16,7 +16,7 @@ Keep per-file backups, guarded failure recovery, atomic publication, cooperative
 
 Use Python >=3.14; validate on Python 3.14, without rejecting later versions. Dependencies must be installed before invoking commands, including previews. The project provides CLI and public Python API interfaces, with no Web UI or third-party runtime dependencies. No Node build or remote hosting.
 
-`dotfile_viewer/api.py` is the public integration surface. CLI and public Python API share editor, snapshot/application and lease implementations. Package resources contain the only default declarations, profiles and declaration schemas; installation execution policies remain in syncronizer. No checkout path imports or hard-coded user paths.
+`src/dotfile_viewer/api.py` is the public integration surface. CLI and public Python API share editor, snapshot/application and lease implementations. Package resources contain the only default declarations, profiles and declaration schemas; installation execution policies remain in syncronizer. No checkout path imports or hard-coded user paths.
 
 Before modifying declarations, read `docs/configuration.md` and `docs/llm-config-authoring.md`, the existing declaration and its schema; do not invent package identities or unverified platform paths. Do not execute declaration text. Catalog overrides replace, rather than merge, defaults.
 

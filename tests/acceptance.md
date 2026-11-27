@@ -91,3 +91,7 @@ macOS ARM64，Python 3.14。通过 DOTFILES_PYTHON 指向现有解释器运行 `
 ## 2026-11-27 · 合并 Unix 工具与桌面字体默认选择
 
 macOS ARM64、Python 3.14。合并后运行 `./tests/check.sh --strict`（通过 DOTFILES_PYTHON 指定解释器），27 项通过，包含 Unix 工具及 Linux、Windows 字体选择。未在 Linux 或 Windows 原生运行。
+
+## 2026-11-27 · 根目录 CLI 与 src 布局
+
+macOS ARM64、Python 3.14。可编辑安装后运行 `./tests/check.sh --strict`，27 项全部通过。从仓库外调用根目录入口和安装后的命令，两者的 `list --json` 输出逐字节一致。公共 API 从 `src/dotfile_viewer/api.py` 加载。本轮未在 Linux、WSL 或 Windows 原生运行。

@@ -13,8 +13,10 @@ git clone https://github.com/5ext9fca/dotfile-viewer.git
 cd dotfile-viewer
 python3.14 -m venv .venv
 .venv/bin/python -m pip install -e .
-.venv/bin/dotfile-viewer list --json
+./dotfile-viewer list --json
 ```
+
+根目录的 `./dotfile-viewer` 默认使用项目的 `.venv/bin/python`，也可用 `DOTFILES_PYTHON` 指定已安装本项目的解释器。Windows 在项目根目录运行 `.venv\Scripts\python.exe main.py list --json`。
 
 Windows 使用 `.venv\Scripts\python.exe` 和 `.venv\Scripts\dotfile-viewer.exe`。项目通过 CLI 和 Python API 提供能力，无第三方运行时依赖。
 
@@ -52,7 +54,7 @@ dotfile-viewer snapshot apply --snapshot /existing/path/settings.zip
 
 ## 统一声明
 
-缺省声明随包分发；源文件位于 `dotfile_viewer/resources/software/items/`，profile 位于 `dotfile_viewer/resources/workflow/profiles/`。不保存配置正文。
+缺省声明随包分发；源文件位于 `src/dotfile_viewer/resources/software/items/`，profile 位于 `src/dotfile_viewer/resources/workflow/profiles/`。不保存配置正文。
 
 需要单独维护声明时，准备包含 `software/items/` 和 `workflow/profiles/` 的目录：
 
