@@ -97,3 +97,19 @@ macOS ARM64，Python 3.14。通过 DOTFILES_PYTHON 指向现有解释器运行 `
 ## 2026-11-27 · 合并 Unix 工具与桌面字体默认选择
 
 macOS ARM64、Python 3.14。合并后运行 `./tests/check.sh --strict`（通过 DOTFILES_PYTHON 指定解释器），27 项通过，包含 Unix 工具及 Linux、Windows 字体选择。未在 Linux 或 Windows 原生运行。
+
+## 2026-11-27 · 根目录 CLI 与 src 布局
+
+macOS ARM64、Python 3.14。可编辑安装后运行 `./tests/check.sh --strict`，27 项全部通过。从仓库外调用根目录入口和安装后的命令，两者的 `list --json` 输出逐字节一致。公共 API 从 `src/dotfile_viewer/api.py` 加载。本轮未在 Linux、WSL 或 Windows 原生运行。
+
+## 2026-11-27 · 源码直接放在 src
+
+macOS ARM64、Python 3.14.10。重新可编辑安装后，`./tests/check.sh --strict` 的 27 项测试全部通过。另将 wheel 离线安装到全新环境，在仓库外通过 `dotfile_viewer.api` 加载默认声明。wheel 命令与项目根目录入口的 `list --json` 输出逐字节一致。本轮未在 Linux、WSL 或 Windows 原生验证。
+
+## 2026-11-27 · 导出默认静默
+
+macOS ARM64、Python 3.14。运行 `./tests/check.sh --strict`，28 项全部通过。新增用例验证实际导出和预览在默认模式下标准输出为空，指定 `--json` 时输出清单，仅实际导出创建归档。本轮未在 Linux、WSL 或 Windows 原生验证。
+
+## 2026-11-27 · 合并 Tailscale 默认选择与 src 布局
+
+Linux x86_64、Python 3.14.10。可编辑安装后，旧包目录残留的 `__pycache__` 导致 Python 从旧路径查找资源。移走仅含缓存的旧目录后，`./tests/check.sh --strict` 的 28 项测试全部通过。新路径下的 Tailscale 声明与迁移前的 Git blob 一致。本轮未在 macOS、Windows 或 WSL 原生运行。

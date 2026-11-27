@@ -1,6 +1,6 @@
 # 声明语义
 
-项目只维护声明，不维护应用配置内容。`dotfile_viewer/resources/software/items/<id>.toml` 是唯一软件/配置声明来源；文件名 ID 为 `[a-z0-9][a-z0-9-]*`。Python 标准库 TOML parser 解析，不执行声明文本。
+项目只维护声明，不维护应用配置内容。`src/resources/software/items/<id>.toml` 是唯一软件/配置声明来源；文件名 ID 为 `[a-z0-9][a-z0-9-]*`。Python 标准库 TOML parser 解析，不执行声明文本。
 
 仓库提供缺省声明和 profile，用户负责按自己的机器增删或修改软件、安装来源、依赖、配置路径及排除项。缺省值不是完整的软件支持清单或自动配置发现结果；配置专用项也不代表工具会安装该应用。仅在某台 macOS 主机确认的新增路径只声明 macOS，不据此推断 Linux 或 Windows 路径。
 
@@ -26,7 +26,7 @@ path = "fish"
 exclude = ["fish_variables"]
 ```
 
-安装表支持 `linux.apt`、`linux.dnf`、`linux.pacman`、`macos`、`windows`；有点或斜线的完整平台键需使用引号，例如 `[install."linux.apt"]`、`[install."windows/winget"]`。安装字段值保持字符串，包括 order。字段与机制/来源组合仍由 `dotfile_viewer/resources/install/schema/fields.tsv`、`methods.tsv`、`sources.tsv` 校验。
+安装表支持 `linux.apt`、`linux.dnf`、`linux.pacman`、`macos`、`windows`；有点或斜线的完整平台键需使用引号，例如 `[install."linux.apt"]`、`[install."windows/winget"]`。安装字段值保持字符串，包括 order。字段与机制/来源组合仍由 `src/resources/install/schema/fields.tsv`、`methods.tsv`、`sources.tsv` 校验。
 
 公共依赖为 `depends_on`；仅安装时需要的依赖为 `install_depends_on`，多安装方式子表使用 `depends_on`。`methods`、`preferred_method`、发现路径、`provides`、`wsl_provider` 保持原有安装所有权语义。安装成功由命令执行策略判定，不进行安装后存在性检查。
 

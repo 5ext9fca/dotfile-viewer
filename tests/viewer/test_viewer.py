@@ -1,4 +1,4 @@
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 import io
 import json
 import os
@@ -149,6 +149,23 @@ class ViewerTest(Fixture):
         self.assertFalse(self.read()['editable'])
         p.write_bytes(b'x' * (2 * 1024 * 1024 + 1))
         self.assertFalse(self.read()['editable'])
+
+    def test_cli_export_output(self):
+        args = ['--catalog', str(self.catalog), 'snapshot', 'export', '--software', 'demo']
+        with patch.object(api, 'host', return_value=self.platform), patch.object(api, 'host_roots', return_value=self.roots):
+            for dry in (False, True):
+                for as_json in (False, True):
+                    with self.subTest(dry=dry, as_json=as_json):
+                        archive = self.root / f'{dry}-{as_json}.zip'
+                        options = (['--dry-run'] if dry else []) + (['--json'] if as_json else [])
+                        output = io.StringIO()
+                        with redirect_stdout(output):
+                            self.assertEqual(cli.main([*args, '--output', str(archive), *options]), 0)
+                        self.assertEqual(archive.exists(), not dry)
+                        if as_json:
+                            self.assertTrue(json.loads(output.getvalue())['entries'])
+                        else:
+                            self.assertEqual(output.getvalue(), '')
 
     def test_export_dry(self):
         api.export_snapshot(self.archive, catalog=self.catalog, profile='test', platform=self.platform, roots=self.roots, dry=True)

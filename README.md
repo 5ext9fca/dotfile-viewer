@@ -13,8 +13,10 @@ git clone https://github.com/5ext9fca/dotfile-viewer.git
 cd dotfile-viewer
 python3.14 -m venv .venv
 .venv/bin/python -m pip install -e .
-.venv/bin/dotfile-viewer list --json
+./dotfile-viewer list --json
 ```
+
+根目录的 `./dotfile-viewer` 默认使用项目的 `.venv/bin/python`，也可用 `DOTFILES_PYTHON` 指定已安装本项目的解释器。Windows 在项目根目录运行 `.venv\Scripts\python.exe main.py list --json`。
 
 Windows 使用 `.venv\Scripts\python.exe` 和 `.venv\Scripts\dotfile-viewer.exe`。项目通过 CLI 和 Python API 提供能力，无第三方运行时依赖。
 
@@ -37,12 +39,14 @@ dotfile-viewer write fish settings config.fish --from candidate.fish --expected-
 ## 快照
 
 ```bash
-dotfile-viewer snapshot export --profile macos --output /existing/path/settings.zip --dry-run
+dotfile-viewer snapshot export --profile macos --output /existing/path/settings.zip --dry-run --json
 dotfile-viewer snapshot export --software fish helix --output /existing/path/settings.zip
 dotfile-viewer snapshot inspect --snapshot /existing/path/settings.zip
 dotfile-viewer snapshot apply --snapshot /existing/path/settings.zip --dry-run
 dotfile-viewer snapshot apply --snapshot /existing/path/settings.zip
 ```
+
+`snapshot export` 成功时默认静默，包括 `--dry-run`。添加 `--json` 可将快照清单打印到标准输出。
 
 快照包含所选软件及依赖的声明、普通文件和空目录；二进制文件不受编辑器的文本限制。采集前停止会写配置的应用。缺失、不可读、未排除链接及检测到的采集变化会导致失败。输出不覆盖已有文件。
 
@@ -52,7 +56,7 @@ dotfile-viewer snapshot apply --snapshot /existing/path/settings.zip
 
 ## 统一声明
 
-缺省声明随包分发；源文件位于 `dotfile_viewer/resources/software/items/`，profile 位于 `dotfile_viewer/resources/workflow/profiles/`。不保存配置正文。
+缺省声明随包分发；源文件位于 `src/resources/software/items/`，profile 位于 `src/resources/workflow/profiles/`。不保存配置正文。
 
 需要单独维护声明时，准备包含 `software/items/` 和 `workflow/profiles/` 的目录：
 
