@@ -1,8 +1,24 @@
 schema_version = 1
 
-# Configuration only; no shell installation or login-shell changes.
-# History, sessions and generated plugin bundles are not captured.
+[install."linux.apt"]
+order = "20"
+method = "apt"
+packages = "zsh"
+source_kind = "default"
 
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "zsh"
+source_kind = "default"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "zsh"
+source_kind = "default"
+
+# macOS uses /bin/zsh. Capture only the verified macOS configuration.
 [[config]]
 id = "rc"
 platforms = ["macos"]

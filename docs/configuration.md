@@ -66,3 +66,5 @@ software=fish git helix
 ## 版本与兼容
 
 软件声明 v1 和 profile v3 保持不变；快照使用 v2，不接受旧 v1。历史 journal 恢复入口已移除，已有资料不删除。安装执行规则由 syncronizer 维护。
+
+默认 macOS、Linux 和 WSL profile 选择 zsh 和 fzf。macOS 使用系统 zsh 和 Homebrew Antidote，并采集 zsh 声明列出的五项配置。Linux 与 WSL 默认只安装 zsh 和 fzf。Fish 仍可单独选择；Unix 完整 profile 选择 all，采集时也需要 Fish 配置。
