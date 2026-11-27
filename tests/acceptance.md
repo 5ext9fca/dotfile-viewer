@@ -1,5 +1,11 @@
 # 验证记录
 
+## 2026-11-27 · 三系统默认安装 Tailscale
+
+Fedora 45 KDE、原生 x86_64、Python 3.14.10。用 `api.load_catalog()` 校验声明，再用 `api.selection()` 和 `api.installation_roots()` 检查 APT、DNF、Pacman、macOS、Windows 的默认及完整 profile 均选中 Tailscale，三条 Linux 分支的 WSL 默认及完整 profile 均排除它。
+
+Viewer checkout 缺少自身的 .venv，首次严格检查未启动。将 DOTFILES_PYTHON 指向安装器已有的 Python 3.14 后重跑 `./tests/check.sh --strict`，24 项通过。在安装器运行 `./install/linux.sh --dry-run --yes` 和追加 `--profile linux-full` 的预览，沙箱内均在 install-state 查询失败；原生环境下重跑均成功，两次都发现 /usr/bin/tailscale 并跳过安装。未执行真实安装、登录或其他系统的原生预览。
+
 ## 2026-11-22 · 原生 Linux 界面字体
 
 Fedora 45 KDE、x86_64、Python 3.14.10。使用安装器 checkout 的 Python 通过 editable 安装本仓库。运行 `DOTFILES_PYTHON=/path/to/.venv/bin/python ./tests/check.sh --strict`，24 项通过。

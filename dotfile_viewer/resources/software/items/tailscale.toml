@@ -1,0 +1,43 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "60"
+method = "script"
+source_kind = "download"
+source_url = "https://tailscale.com/install.sh"
+shell = "sh"
+detect_files = "path:tailscale"
+install_depends_on = "curl"
+environments = "native"
+
+[install."linux.dnf"]
+order = "60"
+method = "script"
+source_kind = "download"
+source_url = "https://tailscale.com/install.sh"
+shell = "sh"
+detect_files = "path:tailscale"
+install_depends_on = "curl"
+environments = "native"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "tailscale"
+source_kind = "default"
+environments = "native"
+
+[install."macos"]
+order = "20"
+method = "cask"
+packages = "tailscale-app"
+source_kind = "default"
+install_depends_on = "homebrew"
+
+[install."windows"]
+order = "40"
+method = "winget"
+packages = "Tailscale.Tailscale"
+source_kind = "winget"
+source_repo = "winget"
+detect_files = "path:tailscale.exe"
