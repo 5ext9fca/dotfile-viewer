@@ -1,0 +1,43 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "20"
+method = "font-download"
+source_kind = "download"
+source_url = "https://raw.githubusercontent.com/Xramas/apple-fonts/f85da081d5083b9b1361eb5e25a37167b4d6bc1a/sf-pro-text"
+font_family = "SF Pro Text"
+font_files = "sf-pro-text-regular.otf sf-pro-text-regular-italic.otf sf-pro-text-medium.otf sf-pro-text-medium-italic.otf sf-pro-text-semibold.otf sf-pro-text-semibold-italic.otf sf-pro-text-bold.otf sf-pro-text-bold-italic.otf"
+depends_on = "fontconfig"
+install_depends_on = "curl"
+environments = "native"
+
+[install."linux.dnf"]
+order = "20"
+method = "font-download"
+source_kind = "download"
+source_url = "https://raw.githubusercontent.com/Xramas/apple-fonts/f85da081d5083b9b1361eb5e25a37167b4d6bc1a/sf-pro-text"
+font_family = "SF Pro Text"
+font_files = "sf-pro-text-regular.otf sf-pro-text-regular-italic.otf sf-pro-text-medium.otf sf-pro-text-medium-italic.otf sf-pro-text-semibold.otf sf-pro-text-semibold-italic.otf sf-pro-text-bold.otf sf-pro-text-bold-italic.otf"
+depends_on = "fontconfig"
+install_depends_on = "curl"
+environments = "native"
+
+[install."linux.pacman"]
+order = "20"
+method = "font-download"
+source_kind = "download"
+source_url = "https://raw.githubusercontent.com/Xramas/apple-fonts/f85da081d5083b9b1361eb5e25a37167b4d6bc1a/sf-pro-text"
+font_family = "SF Pro Text"
+font_files = "sf-pro-text-regular.otf sf-pro-text-regular-italic.otf sf-pro-text-medium.otf sf-pro-text-medium-italic.otf sf-pro-text-semibold.otf sf-pro-text-semibold-italic.otf sf-pro-text-bold.otf sf-pro-text-bold-italic.otf"
+depends_on = "fontconfig"
+install_depends_on = "curl"
+environments = "native"
+
+[install.windows]
+order = "20"
+method = "font-download"
+source_kind = "download"
+source_url = "https://raw.githubusercontent.com/Xramas/apple-fonts/f85da081d5083b9b1361eb5e25a37167b4d6bc1a/sf-pro-text"
+font_family = "SF Pro Text"
+font_files = "sf-pro-text-regular.otf sf-pro-text-regular-italic.otf sf-pro-text-medium.otf sf-pro-text-medium-italic.otf sf-pro-text-semibold.otf sf-pro-text-semibold-italic.otf sf-pro-text-bold.otf sf-pro-text-bold-italic.otf"
+environments = "native"

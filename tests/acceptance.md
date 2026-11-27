@@ -1,5 +1,21 @@
 # 验证记录
 
+## 2026-11-22 · Windows 桌面字体声明
+
+原生 Windows 11 Pro x64（26300），Python 3.14.0。使用 syncronizer checkout 的虚拟环境和本仓库的 editable 安装。
+
+- `api.load_catalog()` 通过全平台图校验。Linux 和 Windows 两个字体选择测试通过，验证 Windows 默认、完整和字体专用 profile 的选择，并逐项比较 Windows 与 Linux 的字体来源、文件和家族。
+- `tests/check.ps1 -Strict` 运行 25 项，报告 6 个断言失败、9 个错误及 2 项跳过。对修改前 HEAD 单独导出的源码重跑，24 项中也报告 5 个断言失败、9 个错误及 2 项跳过，涉及 Windows 文件状态、快照和符号链接。未运行其他原生平台。
+- 已复核两仓库的 README、AGENTS、配置语义和安装说明。Windows 的机器级 GDI 设置由操作者单独应用，Viewer 的归档格式保持原有的文件语义。
+
+## 2026-11-22 · 原生 Linux 界面字体
+
+Fedora 45 KDE、x86_64、Python 3.14.10。使用安装器 checkout 的 Python 通过 editable 安装本仓库。运行 `DOTFILES_PYTHON=/path/to/.venv/bin/python ./tests/check.sh --strict`，24 项通过。
+
+- `api.load_catalog()` 校验全平台依赖图；检查 APT、DNF 和 Pacman 的默认、完整、字体专用 profile 及桌面配置依赖，两款字体均已选中。WSL 的默认、完整 profile 和 macOS、Windows 的完整选择均排除两项。
+- 使用临时 HOME 和四个合成配置文件执行 `snapshot export --software desktop-fonts`、`snapshot inspect`、`snapshot apply --dry-run` 和两次应用。归档含两项字体声明及四个配置文件，恢复内容一致，第二次应用全部跳过。
+- 在 syncronizer 运行 Fedora 默认、完整和字体专用 profile 的 dry-run。未执行原生 APT、Pacman、WSL、macOS 或 Windows 安装。
+
 ## 2026-11-21 · GitHub 公开首版
 
 macOS ARM64，Python 3.14.10。工作区与从暂存源码导出的副本都通过了 `./tests/check.sh --strict`，各 23 项。用合成配置验证了以下行为。
@@ -71,3 +87,7 @@ macOS ARM64，Python 3.14.10。用相邻 syncronizer 项目的 Python 运行 `./
 ## Unix 交互工具与配置采集（2026-11-27）
 
 macOS ARM64，Python 3.14。通过 DOTFILES_PYTHON 指向现有解释器运行 `./tests/check.sh --strict`，25 个用例全部通过。三个 Unix 普通 profile 均包含 Atuin、Starship、zoxide 和 fzf。合成 HOME 验证 macOS 配置往返与重复应用，生成脚本、历史及密钥未被采集。未运行 Linux、WSL 或 Windows 原生安装。已复核 README、声明指南、配置文档与 AGENTS.md。
+
+## 2026-11-27 · 合并 Unix 工具与桌面字体默认选择
+
+macOS ARM64、Python 3.14。合并后运行 `./tests/check.sh --strict`（通过 DOTFILES_PYTHON 指定解释器），27 项通过，包含 Unix 工具及 Linux、Windows 字体选择。未在 Linux 或 Windows 原生运行。
