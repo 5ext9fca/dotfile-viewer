@@ -67,4 +67,4 @@ software=fish git helix
 
 软件声明 v1 和 profile v3 保持不变；快照使用 v2，不接受旧 v1。历史 journal 恢复入口已移除，已有资料不删除。安装执行规则由 syncronizer 维护。
 
-默认 macOS、Linux 和 WSL profile 选择 zsh 和 fzf。macOS 使用系统 zsh 和 Homebrew Antidote，并采集 zsh 声明列出的五项配置。Linux 与 WSL 默认只安装 zsh 和 fzf。Fish 仍可单独选择；Unix 完整 profile 选择 all，采集时也需要 Fish 配置。
+macOS、Linux 和 WSL 的普通 profile 选择 Zsh、fzf、Starship、Atuin 和 zoxide。macOS 使用系统 Zsh 与 Homebrew Antidote，并采集 Zsh 启动文件、插件清单、zsh 配置目录、缩写、Starship 和 Atuin 的配置文件。历史数据库、主目录中的静态插件脚本和下载缓存不在采集范围内。Linux 和 WSL 的 APT 分支使用 Cargo 构建 Atuin 和 Starship。Unix 完整 profile 选择 all，采集时也需要 Fish 配置。

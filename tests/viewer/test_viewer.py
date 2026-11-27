@@ -57,7 +57,7 @@ class ViewerTest(Fixture):
         for name in ('macos', 'linux', 'wsl'):
             selected = api.selection(profile=name)
             self.assertIn('zsh', selected)
-            self.assertIn('fzf', selected)
+            self.assertTrue({'fzf', 'starship', 'atuin', 'zoxide'} <= set(selected))
             self.assertNotIn('fish', selected)
             self.assertEqual('antidote' in selected, name == 'macos')
             self.assertEqual(api.selection(profile=name + '-full'), ['all'])
@@ -68,14 +68,15 @@ class ViewerTest(Fixture):
         def roots(directory):
             return {'home': str(directory), 'config_home': str(directory / '.config')}
 
-        tracked = ['.zshrc', '.zprofile', '.zsh_plugins.txt', '.config/zsh/functions/demo',
+        tracked = ['.zshenv', '.config/atuin/config.toml', '.config/starship.toml',
+                   '.config/zsh/regenerate.zsh', '.zshrc', '.zprofile', '.zsh_plugins.txt', '.config/zsh/functions/demo',
                    '.config/zsh-abbr/user-abbreviations']
-        private = ['.zsh_history', '.zsh_sessions/session', '.zsh_plugins.zsh']
+        private = ['.atuin/data/history.db', '.config/atuin/key', '.zsh_history', '.zsh_sessions/session', '.zsh_plugins.zsh']
         for relative in tracked + private:
             path = source / relative
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(relative)
-        api.export_snapshot(self.archive, software=['zsh'], platform=self.platform, roots=roots(source))
+        api.export_snapshot(self.archive, software=['zsh', 'atuin', 'starship'], platform=self.platform, roots=roots(source))
         with api.SnapshotSession(self.archive, platform=self.platform, roots=roots(destination),
                                  backup=self.root / 'backup') as session:
             self.assertEqual(session.apply()['status'], 'applied')

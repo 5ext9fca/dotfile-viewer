@@ -53,3 +53,9 @@ platforms = ["macos"]
 root = "config_home"
 path = "zsh-abbr/user-abbreviations"
 exclude = []
+
+[[config]]
+id = "env"
+platforms = ["macos"]
+root = "home"
+path = ".zshenv"

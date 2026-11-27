@@ -67,3 +67,7 @@ Web UI、安装器、旧 v1 快照和历史 journal 恢复不是待实现功能�
 ## 2026-11-27：Unix 默认 shell 切换为 zsh
 
 macOS ARM64，Python 3.14.10。用相邻 syncronizer 项目的 Python 运行 `./tests/check.sh --strict`，初次 23 项通过；增加 profile 与快照用例后，25 项全部通过。使用合成 HOME 验证 macOS zsh 的五项采集路径、应用幂等性及未采集的历史、会话和生成文件。测试通过公共 API 读取完整默认 catalog 和普通、完整 Unix profile。同步器使用修改后的 catalog 对两个 macOS profile 执行 dry-run 成功；未做原生 Linux、WSL、Windows 安装。已复核 README、配置指南和 AGENTS.md。
+
+## Unix 交互工具与配置采集（2026-11-27）
+
+macOS ARM64，Python 3.14。通过 DOTFILES_PYTHON 指向现有解释器运行 `./tests/check.sh --strict`，25 个用例全部通过。三个 Unix 普通 profile 均包含 Atuin、Starship、zoxide 和 fzf。合成 HOME 验证 macOS 配置往返与重复应用，生成脚本、历史及密钥未被采集。未运行 Linux、WSL 或 Windows 原生安装。已复核 README、声明指南、配置文档与 AGENTS.md。
