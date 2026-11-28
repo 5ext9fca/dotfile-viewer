@@ -15,7 +15,7 @@ from .snapshot import verify_archive, targets, member_name
 
 class _PreparedSnapshot:
     """Pin an archive in private staging for preview, installation and application."""
-    def __init__(self, path, *, platform=None, roots=None, backup=None, protected=()):
+    def __init__(self, path, *, platform=None, roots=None, backup=None, protected=(), stage_payload=True):
         self.path = Path(path).resolve()
         self.platform = platform or host()
         self.roots = roots if roots is not None else host_roots()
@@ -26,7 +26,8 @@ class _PreparedSnapshot:
         try:
             pinned = self.scratch / 'snapshot.zip'
             shutil.copyfile(self.path, pinned)
-            self.snapshot = verify_archive(pinned, self.scratch / 'unpacked')
+            destination = self.scratch / 'unpacked' if stage_payload else None
+            self.snapshot = verify_archive(pinned, destination)
             if self.snapshot.platform != self.platform:
                 raise SnapshotError('Snapshot platform, architecture or environment mismatch')
             self.destinations = targets(self.snapshot.software, self.roots)

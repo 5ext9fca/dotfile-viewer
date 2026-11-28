@@ -521,6 +521,10 @@ class ViewerTest(Fixture):
             (self.config / f'demo/file-{i}').touch()
         self.capture()
         options = dict(platform=self.platform, roots=self.roots, backup=self.root / 'backups')
+        with api.SnapshotSession(self.archive, **options) as session:
+            expected = session.preview()
+        with self.assertRaisesRegex(api.SnapshotError, 'mismatch'):
+            api.apply_snapshot(self.archive, dry=True, roots=self.roots, platform=api.Platform('windows', 'x86_64', 'native'))
         for mode in ('api-preview', 'cli-preview', 'apply'):
             observed = []
             def track(target):
@@ -528,7 +532,8 @@ class ViewerTest(Fixture):
                 observed.append(target)
                 return observe(target)
 
-            with patch('dotfile_viewer.application.observe', side_effect=track):
+            with (patch('dotfile_viewer.application.observe', side_effect=track),
+                  patch('dotfile_viewer.application.verify_archive', wraps=api.verify_archive) as verify):
                 if mode == 'cli-preview':
                     with (patch('dotfile_viewer.application.host', return_value=self.platform),
                           patch('dotfile_viewer.application.host_roots', return_value=self.roots),
@@ -538,6 +543,9 @@ class ViewerTest(Fixture):
                         result = json.loads(output.getvalue())
                 else:
                     result = api.apply_snapshot(self.archive, dry=mode == 'api-preview', **options)
+            if mode != 'apply':
+                self.assertIsNone(verify.call_args.args[1])
+                self.assertEqual(result, dict(status='preview', **expected))
             self.assertEqual(len(set(observed)), 8)
             self.assertEqual(observed, [Path(row['target']) for row in result['items']])
             self.assertEqual(len(observed), 8)
@@ -638,6 +646,9 @@ class ViewerTest(Fixture):
                         out.writestr(payload.upper(), contents[payload])
                 with self.assertRaises(api.SnapshotError):
                     api.verify_archive(archive)
+                if case == 'digest':
+                    with self.assertRaisesRegex(api.SnapshotError, 'digest mismatch'):
+                        api.apply_snapshot(archive, dry=True, platform=self.platform, roots=self.roots)
 
     def test_backup_failure_leaves_original(self):
         before = (self.config / 'demo/settings').read_bytes()

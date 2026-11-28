@@ -23,5 +23,5 @@ def export_snapshot(output, *, catalog=None, profile=None, software=None, platfo
 
 
 def apply_snapshot(path, *, dry=False, detach=False, expected_version=None, lease=None, **context):
-    with _PreparedSnapshot(path, **context) as session:
+    with _PreparedSnapshot(path, stage_payload=not dry, **context) as session:
         return session.apply(dry=dry, detach=detach, expected_version=expected_version, lease=lease)
