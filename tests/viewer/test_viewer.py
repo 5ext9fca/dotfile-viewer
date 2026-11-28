@@ -677,6 +677,23 @@ class ViewerTest(Fixture):
             self.assertEqual(session.apply()['status'], 'unchanged')
             self.assertEqual(extra.read_text(), 'keep')
 
+    def test_manifest_parent_requires_exact_directory_in_same_configuration(self):
+        manifest = self.capture().document()
+        directory = next(e for e in manifest['entries'] if e['path'] == 'empty')
+        file = next(e for e in manifest['entries'] if e['path'] == 'settings')
+        for path in ('absent/child', 'settings/child', 'Empty/child'):
+            with self.subTest(path=path), self.assertRaisesRegex(api.SnapshotError, 'Missing directory'):
+                api.Snapshot.parse(dict(manifest, entries=[*manifest['entries'], dict(file, path=path)]))
+        with self.assertRaisesRegex(api.SnapshotError, 'case-conflicting'):
+            api.Snapshot.parse(dict(manifest, entries=[*manifest['entries'], dict(file, path='Straße'),
+                                                       dict(file, path='STRASSE')]))
+        configs = manifest['software']['demo']['config']
+        configs.append(dict(configs[0], id='second', path='other'))
+        entries = [*manifest['entries'], dict(directory, config='second', path=''),
+                   dict(file, config='second', path='empty/child')]
+        with self.assertRaisesRegex(api.SnapshotError, 'Missing directory'):
+            api.Snapshot.parse(dict(manifest, entries=entries))
+
     def test_invalid_archive_members(self):
         self.capture()
         with zipfile.ZipFile(self.archive) as original:

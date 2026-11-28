@@ -82,7 +82,7 @@ class Snapshot:
         if not isinstance(entries, list):
             raise SnapshotError('Invalid snapshot entries')
         configs = configurations(catalog)
-        seen, roots = {}, set()
+        seen, roots, directories = set(), set(), set()
         for entry in entries:
             if not isinstance(entry, dict) or set(entry) != {'software', 'config', 'path', 'kind', 'size', 'sha256', 'executable'}:
                 raise SnapshotError('Invalid snapshot entry')
@@ -96,7 +96,7 @@ class Snapshot:
             folded = member.casefold()
             if folded in seen:
                 raise SnapshotError('Duplicate or case-conflicting snapshot path')
-            seen[folded] = entry
+            seen.add(folded)
             if entry['path'] == '':
                 roots.add(key)
             if type(entry['size']) is not int or entry['size'] < 0 or type(entry['executable']) is not int or entry['executable'] & ~0o111:
@@ -106,13 +106,14 @@ class Snapshot:
                     raise SnapshotError('Invalid content digest')
             elif entry['kind'] != 'directory' or entry['size'] != 0 or entry['sha256'] != '' or entry['executable'] != 0:
                 raise SnapshotError('Invalid directory entry')
+            else:
+                directories.add((*key, entry['path']))
         if roots != set(configs):
             raise SnapshotError('Missing declared configuration roots')
         for entry in entries:
             if entry['path']:
                 parent = entry['path'].rsplit('/', 1)[0] if '/' in entry['path'] else ''
-                key = member_name(dict(entry, path=parent)).casefold()
-                if key not in seen or seen[key]['kind'] != 'directory' or member_name(seen[key]) != member_name(dict(entry, path=parent)):
+                if (entry['software'], entry['config'], parent) not in directories:
                     raise SnapshotError('Missing directory or file/directory conflict')
         return cls(platform, data['created_at'], tuple(names), catalog, tuple(entries))
 
