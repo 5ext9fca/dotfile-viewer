@@ -13,6 +13,17 @@ from .paths import no_links
 from .snapshot import verify_archive, targets, member_name
 
 
+def _plan_version(rows):
+    digest = hashlib.sha256(b'[')
+    for start in range(0, len(rows), 128):
+        if start:
+            digest.update(b', ')
+        batch = json.dumps(rows[start:start + 128], sort_keys=True)
+        digest.update(batch[1:-1].encode())
+    digest.update(b']')
+    return digest.hexdigest()
+
+
 class _PreparedSnapshot:
     """Pin an archive in private staging for preview, installation and application."""
     def __init__(self, path, *, platform=None, roots=None, backup=None, protected=(), stage_payload=True):
@@ -73,8 +84,7 @@ class _PreparedSnapshot:
             rows.append(dict(software=entry['software'], config=entry['config'], file=entry['path'],
                              target=str(target), action=action, version=before['version'],
                              detach_required=action == 'replace' and before.get('links', 1) > 1))
-        token = hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
-        return dict(version=token, items=rows)
+        return dict(version=_plan_version(rows), items=rows)
 
     def apply(self, *, dry=False, expected_version=None, detach=False, lease=None):
         lease = lease or {}

@@ -609,6 +609,23 @@ class ViewerTest(Fixture):
                 self.assertEqual(cli.main([*args, '--expected-version', version]), 0)
             self.assertEqual(target.read_bytes(), b'hello\r\n')
 
+    def test_plan_version_compatibility(self):
+        from dotfile_viewer.application import _plan_version
+        rows = [dict(target='中文"反' + chr(92), index=i) for i in range(10000)]
+        for size in (0, 1, 127, 128, 129, 10000):
+            batch = rows[:size]
+            expected = hashlib.sha256(json.dumps(batch, sort_keys=True).encode()).hexdigest()
+            self.assertEqual(_plan_version(batch), expected)
+        self.capture()
+        options = dict(platform=self.platform, roots=self.roots, backup=self.editor.backup)
+        path = self.config / 'demo/settings'
+        path.write_text('modified')
+        rows = api.apply_snapshot(self.archive, dry=True, **options)['items']
+        version = hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
+        self.assertEqual(api.apply_snapshot(self.archive, expected_version=version, **options)['status'], 'applied')
+        with self.assertRaises(api.ConflictError):
+            api.apply_snapshot(self.archive, expected_version=version, **options)
+
     def test_one_shot_apply_observes_each_target_once(self):
         for i in range(5):
             (self.config / f'demo/file-{i}').touch()
