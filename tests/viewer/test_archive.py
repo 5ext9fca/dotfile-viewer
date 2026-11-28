@@ -250,6 +250,38 @@ class ArchiveTest(Fixture):
             with zipfile.ZipFile(self.archive) as archive:
                 self.assertEqual(archive.read('manifest.json'), expected)
 
+    def test_deep_inventory_with_low_recursion_limit(self):
+        import sys
+        directory = self.config / 'demo/empty'
+        for _ in range(80):
+            directory = directory / 'd'
+            directory.mkdir()
+        (directory / 'leaf').write_bytes(b'deep')
+        original_limit = sys.getrecursionlimit()
+        try:
+            sys.setrecursionlimit(64)
+            preview = api.export_snapshot(self.archive, catalog=self.catalog, software=['demo'],
+                                          platform=self.platform, roots=self.roots, dry=True)
+            snapshot = self.capture()
+            checked = api.verify_archive(self.archive)
+        finally:
+            sys.setrecursionlimit(original_limit)
+        self.assertEqual(preview.entries, checked.entries)
+        self.assertEqual(snapshot, checked)
+        leaf, = [entry for entry in checked.entries if entry['path'].endswith('/leaf')]
+        self.assertEqual(leaf['sha256'], hashlib.sha256(b'deep').hexdigest())
+
+    def test_unreadable_directory_aborts_export(self):
+        original = Path.iterdir
+        def children(path):
+            if path == self.config / 'demo/empty':
+                raise PermissionError('enumeration denied')
+            return original(path)
+        with patch.object(Path, 'iterdir', children), self.assertRaisesRegex(PermissionError, 'enumeration denied'):
+            self.capture()
+        self.assertFalse(self.archive.exists())
+        self.assertEqual(list(self.root.glob('.dotfiles-snapshot-*')), [])
+
     def test_manifest_size_boundary(self):
         from datetime import datetime, timezone
         from dotfile_viewer.snapshot import MAX_MANIFEST_BYTES

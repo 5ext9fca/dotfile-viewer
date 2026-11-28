@@ -57,9 +57,13 @@ def _targets(configs, roots):
 def _inventory(configs, locations):
     for key, path in locations.items():
         exclusions = set(configs[key].get('exclude', ()))
-        def visit(current, relative_path):
+        pending = [(path, '')]
+        while pending:
+            current, relative_path = pending.pop()
+            if relative_path and not relative(relative_path):
+                raise SnapshotError(f'Unsupported configuration filename: {current}')
             if is_excluded(relative_path, exclusions):
-                return
+                continue
             info = no_links(current, path.parent)
             if info is None:
                 raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(current))
@@ -67,12 +71,9 @@ def _inventory(configs, locations):
                 raise SnapshotError(f'Unsupported configuration file: {current}')
             yield (*key, relative_path), (current, signature(info), stat.S_ISDIR(info.st_mode))
             if stat.S_ISDIR(info.st_mode):
-                for child in sorted(current.iterdir()):
+                for child in sorted(current.iterdir(), reverse=True):
                     rel = relative_path + '/' + child.name if relative_path else child.name
-                    if not relative(rel):
-                        raise SnapshotError(f'Unsupported configuration filename: {child}')
-                    yield from visit(child, rel)
-        yield from visit(path, '')
+                    pending.append((child, rel))
 
 
 def json_object(pairs):
