@@ -1,3 +1,5 @@
+from dataclasses import replace
+from pathlib import Path
 from unittest.mock import patch
 from dotfile_viewer import api
 from dotfile_viewer.install_config import DeclarationError, InstallSchema, sort_items
@@ -155,6 +157,51 @@ class CatalogTest(Fixture):
         self.assertEqual(api.selection(self.catalog, profile='test'), ['demo'])
         self.assertIn('fish', api.load_catalog())
         self.assertEqual(len(self.editor.configurations()), 1)
+
+    def test_snapshot_catalog_round_trip(self):
+        catalog = api.load_catalog(self.catalog)
+        catalog['demo']['config'][0]['path'] = '配置📁'
+        (self.config / '配置📁').mkdir()
+        for name in ('client', 'runtime'):
+            fields = dict(method='brew', packages=name, order='1', source_kind='default')
+            catalog[name] = dict(schema_version=1, install={'macos': fields})
+        catalog['client']['install']['macos']['depends_on'] = 'runtime'
+        source = self.root / 'source'
+        api.write_catalog(catalog, source / 'software/items')
+        for index, names in enumerate((['demo', 'client'], ['all'])):
+            archive = self.root / f'{index}.zip'
+            api.export_snapshot(archive, catalog=source, platform=self.platform, roots=self.roots, software=names)
+            snapshot = api.verify_archive(archive)
+            with api.snapshot_catalog(snapshot) as first:
+                with api.snapshot_catalog(snapshot) as second:
+                    self.assertNotEqual(first, second)
+                    self.assertEqual(api.selection(second, profile='snapshot'), names)
+                self.assertFalse(second.exists())
+                declarations = api.load_catalog(first)
+                self.assertEqual(api.select(declarations, 'macos', 'native', names), snapshot.software)
+                self.assertEqual(api.selection(first, profile='snapshot'), names)
+            self.assertFalse(first.exists())
+
+    def test_snapshot_catalog_cleanup(self):
+        snapshot = self.capture()
+        with self.assertRaises(api.SnapshotError), api.snapshot_catalog(replace(snapshot, entries=())):
+            self.fail('Invalid snapshot exposed')
+        with self.assertRaisesRegex(RuntimeError, 'caller'), api.snapshot_catalog(snapshot) as root:
+            raise RuntimeError('caller')
+        self.assertFalse(root.exists())
+        write_text = Path.write_text
+
+        def fail_profile(path, *args, **kwargs):
+            if path.name == 'snapshot.conf':
+                self.assertTrue((path.parents[2] / 'software/items/demo.toml').is_file())
+                raise OSError('write')
+            return write_text(path, *args, **kwargs)
+
+        with (patch('tempfile.tempdir', str(self.root)),
+              patch.object(Path, 'write_text', autospec=True, side_effect=fail_profile),
+              self.assertRaisesRegex(OSError, 'write'), api.snapshot_catalog(snapshot)):
+            self.fail('Partial catalog exposed')
+        self.assertEqual(list(self.root.glob('viewer-catalog-*')), [])
 
     def test_write_catalog_reuses_schema_per_call(self):
         catalog = api.load_catalog(self.catalog)

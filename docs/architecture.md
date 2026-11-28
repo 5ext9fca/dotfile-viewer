@@ -43,3 +43,16 @@ with api.deployment_lease() as lease:
         # 调用方在此执行安装。
         session.apply(detach=detach, expected_version=plan["version"])
 ```
+
+`snapshot_catalog(snapshot)` 接受 `verify_archive()` 返回的文档或 `session.snapshot`。每次进入上下文都校验文档并生成独立的临时声明目录。调用方可以在上下文内把该路径传给安装器。目录的生命周期独立于会话暂存区，退出或写入失败时由 Viewer 清理。
+
+```python
+snapshot = api.verify_archive(path)
+with api.snapshot_catalog(snapshot) as root:
+    catalog = api.load_catalog(root)
+    names = api.selection(root, profile="snapshot")
+    install_roots = api.installation_roots(catalog, snapshot.platform.branch,
+                                           snapshot.platform.environment, names)
+```
+
+生成的 profile 保留显式选择顺序或单独的 `all`，软件声明包含依赖闭包。

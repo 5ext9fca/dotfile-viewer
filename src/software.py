@@ -196,6 +196,10 @@ def profile_selection(path):
 def write_catalog(catalog, directory):
     """Serialize already validated declarations into private staging, never repo state."""
     import json
+    def toml_value(value):
+        # TOML accepts Unicode scalar values, but rejects JSON surrogate pairs and literal DEL.
+        return json.dumps(value, ensure_ascii=False).replace('\x7f', '\\u007f')
+
     directory = Path(directory)
     directory.mkdir(parents=True)
     if not catalog:
@@ -205,13 +209,13 @@ def write_catalog(catalog, directory):
         validate(identity, data, schema)
         lines = ['schema_version = 1', '']
         for section, values in data.get('install', {}).items():
-            lines += ['[install.' + json.dumps(section) + ']']
-            lines += [key + ' = ' + json.dumps(value) for key, value in values.items()]
+            lines += ['[install.' + toml_value(section) + ']']
+            lines += [key + ' = ' + toml_value(value) for key, value in values.items()]
             lines += ['']
         if data.get('requires'):
-            lines += ['[requires]'] + [json.dumps(key) + ' = ' + json.dumps(value) for key, value in data['requires'].items()] + ['']
+            lines += ['[requires]'] + [toml_value(key) + ' = ' + toml_value(value) for key, value in data['requires'].items()] + ['']
         for config in data.get('config', []):
-            lines += ['[[config]]'] + [key + ' = ' + json.dumps(value) for key, value in config.items()] + ['']
+            lines += ['[[config]]'] + [key + ' = ' + toml_value(value) for key, value in config.items()] + ['']
         (directory / (identity + '.toml')).write_text('\n'.join(lines), encoding='utf-8')
 
 
