@@ -15,15 +15,27 @@ def default_path():
     return Path(tempfile.gettempdir()) / f'dotfiles-deployment-{os.getuid()}.lock'
 
 
+def _matches_owner(path, token):
+    owner = path / 'owner'
+    return (bool(token) and not path.is_symlink() and not owner.is_symlink()
+            and owner.is_file() and owner.read_text().strip().split('|')[-1] == token)
+
+
+@contextmanager
+def borrowed_lease(path, token, *, dry=False):
+    if not dry and not _matches_owner(Path(path), token):
+        raise CoreError('Borrowed deployment lease is no longer held')
+    yield
+
+
 def acquire(path=None, token=None, owner_pid=None):
     path = Path(path or os.environ.get('DOTFILES_DEPLOYMENT_LOCK') or default_path()).absolute()
     token = token or os.environ.get('DOTFILES_DEPLOYMENT_TOKEN')
     if path.is_symlink():
         raise CoreError('Deployment lease must not be a link')
     owner_path = path / 'owner'
-    if token and owner_path.is_file() and not owner_path.is_symlink():
-        if owner_path.read_text().strip().split('|')[-1] == token:
-            return dict(path=str(path), token=token, owned=False)
+    if _matches_owner(path, token):
+        return dict(path=str(path), token=token, owned=False)
     token = uuid.uuid4().hex
     owner = f'{owner_pid or os.getpid()}|{socket.gethostname()}|{token}'
     try:
@@ -43,7 +55,7 @@ def acquire(path=None, token=None, owner_pid=None):
 def release(path, token):
     path = Path(path)
     owner = path / 'owner'
-    if not path.is_symlink() and not owner.is_symlink() and owner.is_file() and owner.read_text().strip().split('|')[-1] == token:
+    if _matches_owner(path, token):
         owner.unlink()
         path.rmdir()
 

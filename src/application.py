@@ -8,7 +8,7 @@ import tempfile
 from .errors import CoreError, SnapshotError
 from .files import observe, publish_file, new_session, state_home, protected_state, atomic_json, ConflictError
 from .host import host, host_roots
-from .lease import deployment_lease
+from .lease import borrowed_lease, deployment_lease
 from .paths import no_links
 from .snapshot import verify_archive, targets, member_name
 
@@ -86,9 +86,12 @@ class _PreparedSnapshot:
                              detach_required=action == 'replace' and before.get('links', 1) > 1))
         return dict(version=_plan_version(rows), items=rows)
 
-    def apply(self, *, dry=False, expected_version=None, detach=False, lease=None):
+    def _apply_lease(self, lease, dry):
         lease = lease or {}
-        with deployment_lease(path=lease.get('path'), token=lease.get('token'), dry=dry):
+        return deployment_lease(path=lease.get('path'), token=lease.get('token'), dry=dry)
+
+    def apply(self, *, dry=False, expected_version=None, detach=False, lease=None):
+        with self._apply_lease(lease, dry):
             plan = self.preview()
             if expected_version and plan['version'] != expected_version:
                 raise ConflictError('Targets changed since preview; preview again')
@@ -134,10 +137,22 @@ class _PreparedSnapshot:
 
 class SnapshotSession(_PreparedSnapshot):
     """Check destinations immediately, before a caller starts installation."""
-    def __init__(self, path, *, platform=None, roots=None, backup=None, protected=()):
+    def __init__(self, path, *, platform=None, roots=None, backup=None, protected=(), lease=None):
+        self._bound_lease = None
+        if lease is not None:
+            if not lease.get('path') or not lease.get('token'):
+                raise CoreError('Borrowed deployment lease requires path and token')
+            self._bound_lease = dict(path=lease['path'], token=lease['token'])
         super().__init__(path, platform=platform, roots=roots, backup=backup, protected=protected)
         try:
             self.preview()
         except BaseException:
             self.close()
             raise
+
+    def _apply_lease(self, lease, dry):
+        if self._bound_lease is None:
+            return super()._apply_lease(lease, dry)
+        if lease is not None and lease != self._bound_lease:
+            raise CoreError('Conflicting deployment lease for snapshot session')
+        return borrowed_lease(**self._bound_lease, dry=dry)

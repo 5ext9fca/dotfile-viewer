@@ -9,8 +9,8 @@ Viewer 单向被 syncronizer 依赖。Viewer 持有声明及配置文件能力�
 - `Editor(catalog=None, platform=None, roots=None, backup=None)` 提供 `configurations`、`files`、`read`、`save`。
 - `export_snapshot(output, catalog=None, profile=None, software=None, platform=None, roots=None, dry=False)` 导出 manifest v2。
 - `verify_archive(path)` 返回完整校验后的 Snapshot。
-- `SnapshotSession(path, platform=None, roots=None, backup=None, protected=())` 是上下文管理器，固定归档到私有暂存区。`preview()` 返回目标动作及版本，`apply(dry=False, expected_version=None, detach=False, lease=None)` 重新检查并执行。安装器应在同一 session 中先安装、后应用。
-- `deployment_lease(path=None, token=None, dry=False)` 返回显式嵌套所有权，既有 shell 包装器复用同一实现。
+- `SnapshotSession(path, platform=None, roots=None, backup=None, protected=(), lease=None)` 是上下文管理器，固定归档到私有暂存区。`preview()` 返回目标动作及版本，`apply(dry=False, expected_version=None, detach=False, lease=None)` 重新检查并执行。安装器应在同一 session 中先安装、后应用。
+- `deployment_lease(path=None, token=None, dry=False)` 返回显式嵌套所有权，既有 shell 包装器复用同一实现。外层持锁期间可用 `SnapshotSession(path, lease=lease)` 借用所有权，实际应用前验证令牌，释放由外层负责。
 
 `CoreError` 表示可向用户解释的失败，`ConflictError` 表示版本冲突，`ConfirmationRequired` 表示需要硬链接独立保存确认。CLI 退出码：0 成功、2 参数/声明错误、3 访问或操作失败、4 冲突/缺少确认。
 

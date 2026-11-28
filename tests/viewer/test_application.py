@@ -109,6 +109,27 @@ class ApplicationTest(Fixture):
             session.apply()
         self.assertEqual((self.config / 'demo/settings').read_bytes(), b'hello\r\n')
 
+    def test_bound_session_lease(self):
+        self.capture()
+        with api.deployment_lease() as lease:
+            options = dict(platform=self.platform, roots=self.roots, backup=self.editor.backup)
+            session = api.SnapshotSession(self.archive, lease=lease.copy(), **options)
+            self.addCleanup(session.close)
+            (self.config / 'demo/settings').write_text('changed')
+            with self.assertRaises(api.CoreError):
+                session.apply(lease=dict(lease, token='wrong'))
+            self.assertEqual(session.apply()['status'], 'applied')
+            self.assertEqual(session.apply(lease=lease)['status'], 'unchanged')
+            with api.SnapshotSession(self.archive, lease=lease, **options):
+                pass
+            self.assertTrue(Path(lease['path']).is_dir())
+        with patch.object(session, 'preview', side_effect=AssertionError), self.assertRaises(api.CoreError):
+            session.apply()
+        self.assertFalse(Path(lease['path']).exists())
+        self.assertEqual(session.apply(dry=True)['status'], 'preview')
+        with api.deployment_lease(), self.assertRaises(api.CoreError):
+            session.apply()
+
     def test_lease_nested_and_stale(self):
         with api.deployment_lease() as lease:
             with api.deployment_lease(**lease):
