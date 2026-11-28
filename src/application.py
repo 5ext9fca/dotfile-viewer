@@ -13,7 +13,7 @@ from .paths import no_links
 from .snapshot import verify_archive, targets, member_name
 
 
-class SnapshotSession:
+class _PreparedSnapshot:
     """Pin an archive in private staging for preview, installation and application."""
     def __init__(self, path, *, platform=None, roots=None, backup=None, protected=()):
         self.path = Path(path).resolve()
@@ -36,7 +36,6 @@ class SnapshotSession:
             protected_state(self.backup, self.destinations.values())
             # A member name sorts before its descendants, regardless of manifest order.
             self._entries = sorted(self.snapshot.entries, key=member_name)
-            self.preview()
         except BaseException:
             self.close()
             raise
@@ -120,3 +119,14 @@ class SnapshotSession:
                 result.update(status='failed', error=str(exc))
                 atomic_json(report, result)
                 raise
+
+
+class SnapshotSession(_PreparedSnapshot):
+    """Check destinations immediately, before a caller starts installation."""
+    def __init__(self, path, *, platform=None, roots=None, backup=None, protected=()):
+        super().__init__(path, platform=platform, roots=roots, backup=backup, protected=protected)
+        try:
+            self.preview()
+        except BaseException:
+            self.close()
+            raise

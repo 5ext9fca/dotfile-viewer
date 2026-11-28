@@ -380,6 +380,49 @@ class ViewerTest(Fixture):
                 self.assertEqual(cli.main([*args, '--expected-version', version]), 0)
             self.assertEqual(target.read_bytes(), b'hello\r\n')
 
+    def test_one_shot_apply_observes_each_target_once(self):
+        for i in range(5):
+            (self.config / f'demo/file-{i}').touch()
+        self.capture()
+        options = dict(platform=self.platform, roots=self.roots, backup=self.root / 'backups')
+        for mode in ('api-preview', 'cli-preview', 'apply'):
+            observed = []
+            def track(target):
+                self.assertEqual((self.root / 'lease/owner').exists(), mode == 'apply')
+                observed.append(target)
+                return observe(target)
+
+            with patch('dotfile_viewer.application.observe', side_effect=track):
+                if mode == 'cli-preview':
+                    with (patch('dotfile_viewer.application.host', return_value=self.platform),
+                          patch('dotfile_viewer.application.host_roots', return_value=self.roots),
+                          patch.dict(os.environ, DOTFILES_BACKUP_DIR=str(options['backup'])),
+                          redirect_stdout(io.StringIO()) as output):
+                        self.assertEqual(cli.main(['snapshot', 'apply', '--snapshot', str(self.archive), '--dry-run']), 0)
+                        result = json.loads(output.getvalue())
+                else:
+                    result = api.apply_snapshot(self.archive, dry=mode == 'api-preview', **options)
+            self.assertEqual(len(set(observed)), 8)
+            self.assertEqual(observed, [Path(row['target']) for row in result['items']])
+            self.assertEqual(len(observed), 8)
+        self.assertFalse(options['backup'].exists())
+
+    def test_session_preflight_and_apply_confirmation(self):
+        self.capture()
+        options = dict(platform=self.platform, roots=self.roots, backup=self.root / 'backups')
+        target = self.config / 'demo/settings'
+        target.write_text('local')
+        os.link(target, self.root / 'alias')
+        with self.assertRaises(api.ConfirmationRequired):
+            api.apply_snapshot(self.archive, **options)
+        self.assertFalse(options['backup'].exists())
+        self.assertEqual(target.read_text(), 'local')
+        target.unlink()
+        target.mkdir()
+        with self.assertRaisesRegex(api.CoreError, 'type conflict'):
+            with api.SnapshotSession(self.archive, **options):
+                self.fail('Session exposed before preflight')
+
     def test_preview_conflict(self):
         self.capture()
         with api.SnapshotSession(self.archive, platform=self.platform, roots=self.roots, backup=self.root / 'backups') as session:

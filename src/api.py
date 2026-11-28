@@ -6,7 +6,7 @@ No API in this package installs software or executes declaration contents.
 from .catalog import catalog_root, load_catalog, selection
 from .software import installation, installation_roots, select, write_catalog, profile_selection
 from .snapshot import Platform, Snapshot, capture, verify_archive
-from .application import SnapshotSession
+from .application import SnapshotSession, _PreparedSnapshot
 from .editor import Editor
 from .lease import deployment_lease
 from .host import host, host_roots
@@ -23,5 +23,5 @@ def export_snapshot(output, *, catalog=None, profile=None, software=None, platfo
 
 
 def apply_snapshot(path, *, dry=False, detach=False, expected_version=None, lease=None, **context):
-    with SnapshotSession(path, **context) as session:
+    with _PreparedSnapshot(path, **context) as session:
         return session.apply(dry=dry, detach=detach, expected_version=expected_version, lease=lease)
