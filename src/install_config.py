@@ -96,13 +96,15 @@ class InstallSchema:
 
     def dependencies(self, common: str, specific: str) -> str:
         result: list[str] = []
+        seen = set()
         for text in (common, specific):
             if text and not re.fullmatch(self.patterns['depends_on'], text):
                 raise DeclarationError('Invalid depends_on')
             ids = words(text)
             if len(ids) != len(set(ids)):
                 raise DeclarationError('Duplicate dependency')
-            result.extend(name for name in ids if name not in result)
+            result.extend(name for name in ids if name not in seen)
+            seen.update(ids)
         return ' '.join(result)
 
     def discovery(self, method: str, kind: str, text: str, platform: str) -> list[str]:
@@ -131,7 +133,7 @@ class InstallSchema:
             selected = dict(common)
             self.validate(selected, platform)
             selected['depends_on'] = self.dependencies(common.get('depends_on', ''), common.get('install_depends_on', ''))
-            selected['install_depends_on'] = ' '.join(i for i in words(common.get('install_depends_on', '')) if i not in words(common.get('depends_on', '')))
+            specific_dependencies = common.get('install_depends_on', '')
             discovery = self.discovery(selected['method'], 'file', selected.get('detect_files', ''), platform)
             discovery += self.discovery(selected['method'], 'directory', selected.get('detect_dirs', ''), platform)
             if discovery and selected.get('check'):
@@ -169,7 +171,9 @@ class InstallSchema:
                 discovery += self.discovery(method, 'directory', entry.get('detect_dirs', ''), platform)
                 if method == preferred:
                     selected = entry
-            selected['install_depends_on'] = ' '.join(i for i in words(sections[f'{platform}/{preferred}'].get('depends_on', '')) if i not in words(common.get('depends_on', '')))
+            specific_dependencies = sections[f'{platform}/{preferred}'].get('depends_on', '')
+        common_dependencies = set(words(common.get('depends_on', '')))
+        selected['install_depends_on'] = ' '.join(i for i in words(specific_dependencies) if i not in common_dependencies)
         selected['discovery'] = ';'.join(discovery)
         # Compatibility is resolved once, before any planning consumer sees it.
         selected['environments'] = selected.get('environments') or ('native' if selected.get('scope') == 'desktop' else 'native wsl')

@@ -49,6 +49,13 @@ class Fixture(unittest.TestCase):
 
 
 class ViewerTest(Fixture):
+    def test_dependency_merge(self):
+        schema = InstallSchema()
+        self.assertEqual(schema.dependencies('z b', 'a z'), 'z b a')
+        for fields in [('b b', ''), ('', 'b b')]:
+            with self.assertRaisesRegex(DeclarationError, 'Duplicate dependency'):
+                schema.dependencies(*fields)
+
     def test_dependency_sort_order(self):
         graph = {
             name: dict(id=name, order=order, depends_on=deps, environments='native')
