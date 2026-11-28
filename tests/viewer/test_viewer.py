@@ -350,6 +350,34 @@ class ViewerTest(Fixture):
                 with self.assertRaisesRegex(api.SnapshotError, 'Excluded content'):
                     api.Snapshot.parse(manifest)
 
+    def test_configuration_overview_leaf_probes(self):
+        base = self.config / 'demo'
+        leaves = {base / f'f{i}' for i in range(128)}
+        for path in leaves:
+            path.touch()
+        (base / 'link').symlink_to(base / 'missing')
+        paths = [*sorted(leaves), base, base / 'missing', base / 'link', base / 'denied']
+        statuses = ['file'] * 128 + ['directory', 'missing', 'unavailable', 'unavailable']
+        if hasattr(os, 'mkfifo'):
+            os.mkfifo(base / 'fifo')
+            paths.append(base / 'fifo')
+            statuses.append('unsupported')
+        configs = [dict(id=f'c{i}', root='config_home', path=p.relative_to(self.config).as_posix(),
+                        platforms=['macos']) for i, p in enumerate(paths)]
+        probes = []
+        original = Path.lstat
+        def checked(path):
+            if path in leaves:
+                probes.append(path)
+            if path == base / 'denied':
+                raise PermissionError('denied')
+            return original(path)
+        with patch('dotfile_viewer.editor.load_catalog', return_value={'demo': {'config': configs}}), patch.object(Path, 'lstat', checked):
+            rows = self.editor.configurations()[0]['configs']
+        self.assertEqual([r['status'] for r in rows], statuses)
+        self.assertEqual(['error' in r for r in rows], [s == 'unavailable' for s in statuses])
+        self.assertCountEqual(probes, leaves)
+
     def test_files_classifies_checked_leaf(self):
         base = self.config / 'demo'
         (base / 'broken').symlink_to(base / 'absent')

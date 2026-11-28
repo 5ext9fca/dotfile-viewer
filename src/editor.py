@@ -38,8 +38,10 @@ class Editor:
             root = self._root(config)
             path = root / config['path']
             record['resolved_path'] = str(path)
-            no_links(path, root)
-            info = path.lstat()
+            info = no_links(path, root)
+            if info is None:
+                record['status'] = 'missing'
+                return record
             record['status'] = 'directory' if stat.S_ISDIR(info.st_mode) else 'file' if stat.S_ISREG(info.st_mode) else 'unsupported'
         except FileNotFoundError:
             record['status'] = 'missing'
