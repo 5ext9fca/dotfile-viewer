@@ -213,7 +213,11 @@ def capture(catalog, platform, selection, roots, output, dry=False):
         Path(temporary).unlink(missing_ok=True)
 
 
-def verify_archive(path, destination=None):
+def verify_archive(path) -> Snapshot:
+    return _checked_archive(path, None)
+
+
+def _checked_archive(path, destination):
     try:
         return _verify_archive(path, destination)
     except SnapshotError:

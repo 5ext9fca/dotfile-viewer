@@ -211,13 +211,34 @@ class ArchiveTest(Fixture):
         staged = self.root / 'unpacked'
         self.assertEqual(snapshot.software, dry.software)
         self.assertEqual(snapshot.entries, dry.entries)
-        for destination in (None, staged):
-            self.assertEqual(api.verify_archive(self.archive, destination), snapshot)
+        self.assertEqual(api.verify_archive(self.archive), snapshot)
+        with self.assertRaises(TypeError):
+            api.verify_archive(self.archive, staged)
+        with self.assertRaises(TypeError):
+            api.verify_archive(self.archive, destination=staged)
+        self.assertFalse(staged.exists())
+        api.apply_snapshot(self.archive, platform=self.platform, roots={'config_home': staged}, backup=self.editor.backup)
         for entry in snapshot.entries:
             if entry['path'].isdigit():
                 data = (base / entry['path']).read_bytes()
                 self.assertEqual((entry['size'], entry['sha256']), (len(data), hashlib.sha256(data).hexdigest()))
-                self.assertEqual((staged / 'payload/demo/settings/root' / entry['path']).read_bytes(), data)
+                self.assertEqual((staged / 'demo' / entry['path']).read_bytes(), data)
+
+    def test_failed_staging_removes_partial_payload(self):
+        (self.config / 'demo/first').touch()
+        self.capture()
+        original = zipfile.ZipFile.open
+
+        def fail_late(archive, name, *args, **kwargs):
+            if isinstance(name, zipfile.ZipInfo) and name.filename.endswith('/settings'):
+                self.assertTrue(list(self.root.glob('viewer-snapshot-*/unpacked/**/first')))
+                raise OSError('payload read failed')
+            return original(archive, name, *args, **kwargs)
+
+        with (patch('tempfile.tempdir', str(self.root)), patch.object(zipfile.ZipFile, 'open', fail_late),
+              self.assertRaisesRegex(OSError, 'payload read failed')):
+            api.SnapshotSession(self.archive, platform=self.platform, roots=self.roots)
+        self.assertEqual(list(self.root.glob('viewer-snapshot-*')), [])
 
     def test_streamed_manifest_bytes(self):
         from dotfile_viewer.snapshot import _write_manifest

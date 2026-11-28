@@ -45,3 +45,7 @@ with api.deployment_lease(dry=dry) as lease, api.SnapshotSession(path, lease=lea
 read_items 的显式 schema_directory 现在也用于 TOML 声明。曾向 TOML 调用传入自定义规则的安装器，应检查这些规则对全部平台声明的适用性。
 
 files 输出中，无法枚举的目录只出现一次，kind 为 unavailable，error 包含原因。
+
+## Python API v3
+
+检查快照使用 `api.verify_archive(path)`，它校验所有载荷并返回文档。原 destination 参数已移除。读取软件声明使用 `with api.snapshot_catalog(snapshot) as root`；应用配置使用 `api.apply_snapshot(path)` 或 SnapshotSession。载荷暂存目录由会话管理。

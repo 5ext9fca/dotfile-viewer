@@ -11,7 +11,7 @@ from .files import observe, publish_file, new_session, state_home, protected_sta
 from .host import host, host_roots
 from .lease import deployment_lease, lease_credentials
 from .paths import no_links
-from .snapshot import verify_archive, targets, member_name
+from .snapshot import _checked_archive, targets, member_name
 
 
 def _plan_version(rows):
@@ -45,7 +45,7 @@ class _PreparedSnapshot:
             pinned = self._scratch / 'snapshot.zip'
             shutil.copyfile(self._path, pinned)
             destination = self._scratch / 'unpacked' if stage_payload else None
-            self._snapshot = verify_archive(pinned, destination)
+            self._snapshot = _checked_archive(pinned, destination)
             if self._snapshot.platform != self._platform:
                 raise SnapshotError('Snapshot platform, architecture or environment mismatch')
             self._destinations = targets(self._snapshot.software, self._roots)

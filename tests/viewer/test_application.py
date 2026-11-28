@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 from dotfile_viewer import api, cli
 from dotfile_viewer.files import atomic_json, observe
+from dotfile_viewer.snapshot import _checked_archive
 from viewer_fixture import Fixture
 
 
@@ -59,7 +60,7 @@ class ApplicationTest(Fixture):
                 return observe(target)
 
             with (patch('dotfile_viewer.application.observe', side_effect=track),
-                  patch('dotfile_viewer.application.verify_archive', wraps=api.verify_archive) as verify):
+                  patch('dotfile_viewer.application._checked_archive', wraps=_checked_archive) as verify):
                 if mode == 'cli-preview':
                     with (patch('dotfile_viewer.application.host', return_value=self.platform),
                           patch('dotfile_viewer.application.host_roots', return_value=self.roots),
