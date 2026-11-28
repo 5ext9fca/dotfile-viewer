@@ -6,7 +6,7 @@ import os
 import shutil
 import tempfile
 from .errors import CoreError, SnapshotError
-from .files import observe, publish_file, new_session, state_home, protected_state, atomic_json, ConflictError
+from .files import observe, publish_file, new_session, state_home, protected_state, atomic_json, ConflictError, ConfirmationRequired
 from .host import host, host_roots
 from .lease import borrowed_lease, deployment_lease
 from .paths import no_links
@@ -22,6 +22,11 @@ def _plan_version(rows):
         digest.update(batch[1:-1].encode())
     digest.update(b']')
     return digest.hexdigest()
+
+
+def _confirm_detach(plan, detach):
+    if not detach and any(row['detach_required'] for row in plan['items']):
+        raise ConfirmationRequired('Snapshot replaces hard links; confirm --detach-hardlink')
 
 
 class _PreparedSnapshot:
@@ -107,9 +112,7 @@ class _PreparedSnapshot:
                 raise ConflictError('Targets changed since preview; preview again')
             if dry:
                 return dict(status='preview', **plan)
-            if not detach and any(row['detach_required'] for row in plan['items']):
-                from .files import ConfirmationRequired
-                raise ConfirmationRequired('Snapshot replaces hard links; confirm --detach-hardlink')
+            _confirm_detach(plan, detach)
             if all(row['action'] == 'skip' for row in plan['items']):
                 return dict(status='unchanged', **plan)
             session = new_session(self.backup)
@@ -159,6 +162,12 @@ class SnapshotSession(_PreparedSnapshot):
         except BaseException:
             self.close()
             raise
+
+    def preflight(self, *, detach=False) -> dict:
+        """Return a fresh plan after checking hard-link confirmation."""
+        plan = self.preview()
+        _confirm_detach(plan, detach)
+        return plan
 
     def _apply_lease(self, lease, dry):
         if self._bound_lease is None:

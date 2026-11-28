@@ -31,3 +31,15 @@ Viewer 单向被 syncronizer 依赖。Viewer 持有声明及配置文件能力�
 `install_schema` 提供安装声明规则和依赖排序。`install_config.read_items()` 负责 TOML 与旧 .conf 格式分派，原入口继续导出 `ROOT`、`rows`、`DeclarationError`、`InstallSchema` 和 `sort_items`。
 
 会话拥有固定归档及解包暂存区。退出上下文或显式调用 `close()` 都会清理暂存区，重复关闭安全。关闭后仍可读取 `session.snapshot`，重新进入、预览和应用会立即抛出 `CoreError`。外层借出的部署租约由外层释放。
+
+安装器可在开始安装前调用一次 `preflight(detach=...)`。它对每个目标观测一次，返回与 `preview()` 相同的计划；替换多硬链接文件需要显式确认。安装后，`apply()` 在租约内重新生成计划并先核对预期版本。只读的 `preview()` 和 `apply(dry=True)` 均可查看待确认项。
+
+```python
+from dotfile_viewer import api
+
+with api.deployment_lease() as lease:
+    with api.SnapshotSession(path, lease=lease) as session:
+        plan = session.preflight(detach=detach)
+        # 调用方在此执行安装。
+        session.apply(detach=detach, expected_version=plan["version"])
+```

@@ -111,7 +111,7 @@ class ApplicationTest(Fixture):
                 with (patch.object(session, '_apply_lease') as acquire,
                       patch('dotfile_viewer.application.observe') as observed,
                       patch('dotfile_viewer.application.atomic_json') as report):
-                    for operation in (session.__enter__, session.preview, lambda: session.apply(dry=True), session.apply):
+                    for operation in (session.__enter__, session.preview, session.preflight, lambda: session.apply(dry=True), session.apply):
                         with self.subTest(change=change, operation=operation), self.assertRaisesRegex(api.CoreError, 'closed'):
                             operation()
                     acquire.assert_not_called()
@@ -129,6 +129,32 @@ class ApplicationTest(Fixture):
         with patch('tempfile.tempdir', str(self.root)), self.assertRaisesRegex(api.CoreError, 'type conflict'):
             api.SnapshotSession(self.archive, platform=self.platform, roots=self.roots, backup=self.editor.backup)
         self.assertEqual(list(self.root.glob('viewer-snapshot-*')), [])
+
+    def test_preflight_observes_once_and_apply_rechecks(self):
+        self.capture()
+        target = self.config / 'demo/settings'
+        alias = self.root / 'alias'
+        os.link(target, alias)
+        with api.SnapshotSession(self.archive, platform=self.platform, roots=self.roots, backup=self.editor.backup) as session:
+            expected = session.preview()
+            with patch('dotfile_viewer.application.observe', wraps=observe) as observed:
+                plan = session.preflight()
+            self.assertEqual(plan, expected)
+            targets = [Path(row['target']) for row in plan['items']]
+            self.assertEqual([call.args[0] for call in observed.call_args_list], targets)
+            self.assertEqual(len(targets), len(set(targets)))
+            target.write_bytes(b'local')
+            with self.assertRaises(api.ConflictError):
+                session.apply(expected_version=plan['version'])
+            with self.assertRaises(api.ConfirmationRequired):
+                session.apply()
+            with self.assertRaises(api.ConfirmationRequired):
+                session.preflight()
+            confirmed = session.preflight(detach=True)
+            self.assertEqual(session.apply(dry=True), dict(status='preview', **confirmed))
+            self.assertEqual(session.apply(detach=True, expected_version=confirmed['version'])['status'], 'applied')
+            self.assertEqual(alias.read_bytes(), b'local')
+            self.assertEqual(target.read_bytes(), b'hello\r\n')
 
     def test_preview_conflict(self):
         self.capture()
