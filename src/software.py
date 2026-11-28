@@ -191,12 +191,16 @@ def installation_roots(catalog, platform, environment, names):
     """Map configuration-only roots to install roots without eagerly requesting
     installation-only dependencies of an already present application."""
     chosen = select(catalog, platform, environment, names)
+    visited = set()
     result = []
+
     def visit(identity):
+        if identity in visited:
+            return
+        visited.add(identity)
         data = chosen[identity]
         if platform in data.get('install', {}):
-            if identity not in result:
-                result.append(identity)
+            result.append(identity)
         else:
             for dependency in data.get('requires', {}).get(platform, []):
                 visit(dependency)

@@ -70,6 +70,26 @@ class ViewerTest(Fixture):
         with self.assertRaisesRegex(DeclarationError, 'Dependency cycle'):
             sort_items(graph)
 
+    def test_shared_installation_roots(self):
+        platform = 'linux.apt'
+        catalog = {
+            name: dict(schema_version=1, install={platform: dict(
+                method='apt', packages=name, source_kind='default', order='1')})
+            for name in ('alpha', 'zulu', 'runtime')
+        }
+        catalog['zulu']['install'][platform]['depends_on'] = 'runtime'
+        for name, deps in [('shared', ['zulu', 'alpha']), ('left', ['shared']),
+                           ('right', ['shared', 'runtime']), ('leaf', [])]:
+            catalog[name] = dict(schema_version=1, requires={platform: deps},
+                                 config=[dict(id='cfg', path=name, root='home', platforms=[platform])])
+
+        for names, expected in [(['left', 'right'], ['zulu', 'alpha', 'runtime']),
+                                (['alpha', 'left'], ['alpha', 'zulu']),
+                                (['zulu'], ['zulu']), (['leaf'], []),
+                                (['all'], ['alpha', 'runtime', 'zulu'])]:
+            with self.subTest(names=names):
+                self.assertEqual(api.installation_roots(catalog, platform, 'native', names), expected)
+
     def test_catalog_and_profiles(self):
         self.assertEqual(api.selection(self.catalog, profile='test'), ['demo'])
         self.assertIn('fish', api.load_catalog())
