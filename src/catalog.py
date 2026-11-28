@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 from .install_schema import ROOT, DeclarationError
-from .software import read_catalog, profile_selection, ID
+from .software import read_catalog, profile_selection, selection_names, ID
 
 
 def catalog_root(directory=None):
@@ -17,10 +17,10 @@ def load_catalog(directory=None):
 
 
 def selection(directory=None, *, profile=None, software=None):
-    if bool(profile) == bool(software):
+    if (profile is None) == (software is None):
         raise DeclarationError('Specify exactly one profile or software selection')
-    if profile:
-        if not ID.fullmatch(profile):
+    if profile is not None:
+        if not isinstance(profile, str) or not ID.fullmatch(profile):
             raise DeclarationError('Invalid profile name')
         return profile_selection(catalog_root(directory) / 'workflow/profiles' / (profile + '.conf'))
-    return list(software)
+    return selection_names(software)

@@ -19,7 +19,7 @@ import zipfile
 from dotfile_viewer.errors import SnapshotError
 from .manifest import Platform, Snapshot, configurations, member_name
 from dotfile_viewer.paths import is_excluded, no_links, signature
-from dotfile_viewer.software import select, relative
+from dotfile_viewer.software import select, relative, selection_names
 
 
 MAX_MANIFEST_BYTES = 16 * 1024 * 1024
@@ -202,6 +202,7 @@ def _collect_snapshot(platform, selection, chosen, configs, locations, roots, ar
 
 def capture(catalog, platform, selection, roots, output, dry=False):
     platform.validate()
+    selection = selection_names(selection)
     chosen = select(catalog, platform.branch, platform.environment, selection)
     output = Path(output).absolute()
     if output.exists() or output.is_symlink():

@@ -78,3 +78,5 @@ manifest.json 的上限为 16 MiB，按未压缩 UTF-8 字节计算。预演与�
 edit 的外部草稿与 write 的文件及标准输入共用候选字节解码。解码保留原始换行字符，保存操作在版本检查后规范化 CRLF 并校验正文。
 
 一次性入口 apply_snapshot(path, *, dry=False, detach=False, expected_version=None, lease=None, platform=None, roots=None, backup=None, protected=()) 与会话共用版本校验。例如 api.apply_snapshot(path, expected_version=plan["version"])。只有 None 省略检查。
+
+显式选择可传单个 ID（如 api.selection(software="demo")），也可传有序列表、元组或迭代器。多个 ID 保留原始顺序，all 单独使用。profile 与 software 按是否传值互斥。

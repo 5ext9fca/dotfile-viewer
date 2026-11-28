@@ -178,6 +178,24 @@ class CatalogTest(Fixture):
         with self.assertRaises(DeclarationError):
             api.installation_roots(catalog, 'unknown', 'native', ['demo'])
 
+    def test_ordered_selection_inputs(self):
+        catalog = api.load_catalog(self.catalog)
+        for value in ('demo', ('demo',), iter(['demo'])):
+            self.assertEqual(api.selection(software=value), ['demo'])
+        self.assertEqual(api.select(catalog, 'macos', 'native', 'all'), api.select(catalog, 'macos', 'native', ['all']))
+        for value in ([], '', 'demo other', ['all', 'demo'], ['demo', 'demo'], {1}, {}, b'demo', [42]):
+            for operation in (lambda: api.selection(software=value),
+                              lambda: api.select(catalog, 'macos', 'native', value),
+                              lambda: api.installation_roots(catalog, 'macos', 'native', value)):
+                with self.assertRaises(DeclarationError):
+                    operation()
+        with self.assertRaises(DeclarationError):
+            api.selection(self.catalog, profile='test', software=[])
+        api.capture(catalog, self.platform, iter(['demo']), self.roots, self.archive)
+        snapshot = api.verify_archive(self.archive)
+        with api.snapshot_catalog(snapshot) as root:
+            self.assertEqual(api.selection(root, profile='snapshot'), ['demo'])
+
     def test_catalog_and_profiles(self):
         self.assertEqual(api.selection(self.catalog, profile='test'), ['demo'])
         self.assertIn('fish', api.load_catalog())

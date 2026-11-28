@@ -1,4 +1,5 @@
 """Unified software declarations and snapshot selection (no host mutation)."""
+from collections.abc import Mapping, Set
 from pathlib import Path
 import re
 from copy import deepcopy
@@ -8,6 +9,22 @@ from dotfile_viewer.install_schema import ROOT, PLATFORMS, InstallSchema, Declar
 
 ID = re.compile(r'[a-z0-9][a-z0-9-]*\Z')
 ROOTS = {'home', 'config_home', 'app_data', 'local_app_data'}
+
+
+def selection_names(value):
+    if isinstance(value, str):
+        names = [value]
+    else:
+        if isinstance(value, (bytes, bytearray, memoryview, Mapping, Set)):
+            raise DeclarationError('Expected an ordered software selection')
+        try:
+            names = list(value)
+        except TypeError as exc:
+            raise DeclarationError('Expected an ordered software selection') from exc
+    if (not names or any(not isinstance(n, str) or not ID.fullmatch(n) or n == 'none' for n in names)
+            or len(names) != len(set(names)) or ('all' in names and names != ['all'])):
+        raise DeclarationError('Invalid software selection')
+    return names
 
 
 def relative(value):
@@ -117,7 +134,7 @@ def available(data, platform):
 
 
 def select(catalog, platform, environment, names, *, filter_environment=True):
-    return _select(catalog, platform, environment, names, InstallSchema(), filter_environment=filter_environment)
+    return _select(catalog, platform, environment, selection_names(names), InstallSchema(), filter_environment=filter_environment)
 
 
 def _select(catalog, platform, environment, names, schema, *, filter_environment=True):
@@ -195,9 +212,9 @@ def profile_selection(path):
             raise DeclarationError('Profiles require schema_version=3 and software=...')
         values[key] = value
     names = values.get('software', '').split()
-    if values.get('schema_version') != '3' or not names or any(not ID.fullmatch(n) for n in names) or len(names) != len(set(names)) or ('all' in names and names != ['all']):
+    if values.get('schema_version') != '3':
         raise DeclarationError('Invalid software profile')
-    return names
+    return selection_names(names)
 
 
 def write_catalog(catalog, directory):
@@ -229,6 +246,7 @@ def write_catalog(catalog, directory):
 def installation_roots(catalog, platform, environment, names):
     """Map configuration-only roots to install roots without eagerly requesting
     installation-only dependencies of an already present application."""
+    names = selection_names(names)
     chosen = _selection_ids(catalog, platform, environment, names, InstallSchema())
     visited = set()
     result = []
