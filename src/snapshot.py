@@ -7,6 +7,7 @@ links and never publishes a partial archive.
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+import errno
 import hashlib
 import json
 import os
@@ -158,8 +159,9 @@ def _inventory(configs, locations):
         def visit(current, relative_path):
             if is_excluded(relative_path, exclusions):
                 return
-            no_links(current, path.parent)
-            info = current.lstat()  # Missing required paths abort the whole capture.
+            info = no_links(current, path.parent)
+            if info is None:
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(current))
             if not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode)):
                 raise SnapshotError(f'Unsupported configuration file: {current}')
             result[(*key, relative_path)] = (current, signature(info), stat.S_ISDIR(info.st_mode))

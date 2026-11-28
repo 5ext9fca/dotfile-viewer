@@ -505,6 +505,14 @@ class ViewerTest(Fixture):
                 self.capture()
             self.assertFalse(self.archive.exists())
 
+    def test_capture_missing_required_path(self):
+        missing = self.config / 'demo'
+        missing.rename(self.config / 'away')
+        with self.assertRaises(FileNotFoundError) as failure:
+            self.capture()
+        self.assertEqual(Path(failure.exception.filename), missing)
+        self.assertFalse(self.archive.exists())
+
     def test_export_dry(self):
         api.export_snapshot(self.archive, catalog=self.catalog, profile='test', platform=self.platform, roots=self.roots, dry=True)
         self.assertFalse(self.archive.exists())
