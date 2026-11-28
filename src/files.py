@@ -129,6 +129,43 @@ def _recover_output(target, backup, record, staged_stat, published):
     return 'restored'
 
 
+def _backup_file(target, backup, before):
+    # An independent copy also protects against edits through another hard link.
+    shutil.copy2(target, backup)
+    if observe(target)['version'] != before['version'] or observe(backup)['sha256'] != before['sha256']:
+        raise ConflictError(f'File changed during backup: {target}')
+
+
+def _stage_file(temp, source, backup, executable, preserve_permissions):
+    if isinstance(source, bytes):
+        Path(temp).write_bytes(source)
+    else:
+        shutil.copyfile(source, temp)
+    if backup:
+        shutil.copystat(backup, temp)
+    if not backup or not preserve_permissions:
+        os.chmod(temp, 0o600)
+    if executable is not None:
+        mode = stat.S_IMODE(os.stat(temp).st_mode)
+        os.chmod(temp, (mode & ~0o111) | executable)
+
+
+def _report_publish_failure(exc, target, backup, report, record, staged_stat, published):
+    record.update(status='failed', error=str(exc))
+    try:
+        record['recovery'] = _recover_output(target, backup, record, staged_stat, published)
+    except (OSError, CoreError) as recovery_error:
+        record.update(recovery='manual', recovery_error=str(recovery_error))
+    detail = f"{exc}; recovery={record['recovery']}; report={report}; backup={backup}"
+    try:
+        atomic_json(report, record)
+    except OSError as report_error:
+        raise CoreError(f'{detail}; could not write failure report: {report_error}') from exc
+    if isinstance(exc, (OSError, CoreError)):
+        failure = ConflictError if isinstance(exc, ConflictError) else CoreError
+        raise failure(detail) from exc
+
+
 def publish_file(target, source, expected, session, *, detach=False, executable=None, preserve_permissions=True):
     """Caller holds the deployment lease. Never overwrite a changed target."""
     target, session = Path(target), Path(session)
@@ -143,28 +180,15 @@ def publish_file(target, source, expected, session, *, detach=False, executable=
     backup = session / (identifier + '.original') if before['kind'] == 'file' else None
     record = dict(target=str(target), before=before, backup=str(backup) if backup else None, status='preparing')
     report = session / (identifier + '.json')
-    # A private copy preserves the original even if another hard link is edited.
     if backup:
-        shutil.copy2(target, backup)
-        if observe(target)['version'] != expected or observe(backup)['sha256'] != before['sha256']:
-            raise ConflictError(f'File changed during backup: {target}')
+        _backup_file(target, backup, before)
     atomic_json(report, record)
     fd, temp = tempfile.mkstemp(prefix='.dotfile-viewer-', dir=target.parent)
     os.close(fd)
     replaced = False
     published = None
     try:
-        if isinstance(source, bytes):
-            Path(temp).write_bytes(source)
-        else:
-            shutil.copyfile(source, temp)
-        if backup:
-            shutil.copystat(backup, temp)
-        if not backup or not preserve_permissions:
-            os.chmod(temp, 0o600)
-        if executable is not None:
-            mode = stat.S_IMODE(os.stat(temp).st_mode)
-            os.chmod(temp, (mode & ~0o111) | executable)
+        _stage_file(temp, source, backup, executable, preserve_permissions)
         if observe(target)['version'] != expected:
             raise ConflictError(f'File changed before save: {target}')
         after = observe(temp)
@@ -179,19 +203,7 @@ def publish_file(target, source, expected, session, *, detach=False, executable=
     except BaseException as exc:
         if not replaced:
             raise
-        record.update(status='failed', error=str(exc))
-        try:
-            record['recovery'] = _recover_output(target, backup, record, staged_stat, published)
-        except (OSError, CoreError) as recovery_error:
-            record.update(recovery='manual', recovery_error=str(recovery_error))
-        detail = f"{exc}; recovery={record['recovery']}; report={report}; backup={backup}"
-        try:
-            atomic_json(report, record)
-        except OSError as report_error:
-            raise CoreError(f'{detail}; could not write failure report: {report_error}') from exc
-        if isinstance(exc, (OSError, CoreError)):
-            failure = ConflictError if isinstance(exc, ConflictError) else CoreError
-            raise failure(detail) from exc
+        _report_publish_failure(exc, target, backup, report, record, staged_stat, published)
         raise
     finally:
         Path(temp).unlink(missing_ok=True)

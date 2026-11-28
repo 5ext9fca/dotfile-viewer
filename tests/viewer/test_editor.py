@@ -238,6 +238,28 @@ class EditorTest(Fixture):
                 self.save('changed')
         self.assertEqual((self.config / 'demo/settings').read_bytes(), before)
 
+    def test_prepared_report_failure_preserves_target(self):
+        target = self.config / 'demo/settings'
+        original = target.read_bytes()
+        write_report = files.atomic_json
+        def fail_prepared(path, record):
+            if record['status'] == 'prepared':
+                raise OSError('prepared report failed')
+            write_report(path, record)
+        self.capture()
+        target.write_bytes(b'local')
+        with patch.object(files, 'atomic_json', side_effect=fail_prepared):
+            for apply in (False, True):
+                with self.assertRaisesRegex(OSError, 'prepared report failed'):
+                    if apply:
+                        api.apply_snapshot(self.archive, platform=self.platform, roots=self.roots, backup=self.editor.backup)
+                    else:
+                        self.save(original.decode())
+                self.assertEqual(target.read_bytes(), b'local')
+                self.assertFalse(list(target.parent.glob('.dotfile-viewer-*')))
+        backups = list(self.editor.backup.glob('*/*.original'))
+        self.assertEqual([p.read_bytes() for p in backups], [b'local', b'local'])
+
     def test_publish_failure_leaves_original(self):
         from dotfile_viewer import files
         replace = files.os.replace
