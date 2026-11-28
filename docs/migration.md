@@ -41,3 +41,5 @@ with api.deployment_lease(dry=dry) as lease, api.SnapshotSession(path, lease=lea
 ```
 
 显式或环境传入的非空部署令牌表示借用既有锁。外层释放后应丢弃凭据。向快照 API 传入 lease 时须同时提供 path 和 token，包括 dry-run。
+
+read_items 的显式 schema_directory 现在也用于 TOML 声明。曾向 TOML 调用传入自定义规则的安装器，应检查这些规则对全部平台声明的适用性。

@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 
 from .install_schema import COMMON, PLATFORMS, ROOT, DeclarationError, InstallSchema, Method, rows, sort_items, words
-from .software import installation, read_catalog
+from .software import _read_catalog, installation, read_catalog
 
 
 def parse_file(path: Path, schema: InstallSchema) -> dict[str, dict[str, str]]:
@@ -39,9 +39,10 @@ def parse_file(path: Path, schema: InstallSchema) -> dict[str, dict[str, str]]:
 def read_items(directory: Path, platform: str, schema_directory: Path = ROOT / 'install/schema') -> list[dict[str, str]]:
     if platform not in PLATFORMS:
         raise DeclarationError('Unknown target platform')
-    if list(directory.glob('*.toml')):
-        return installation(read_catalog(directory), platform)
     schema = InstallSchema(schema_directory)
+    if next(directory.glob('*.toml'), None) is not None:
+        _, items = _read_catalog(directory, schema, platform)
+        return items
     files = sorted(directory.glob('*.conf'))
     if not files:
         raise DeclarationError('No item configurations found')

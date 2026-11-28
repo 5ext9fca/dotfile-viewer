@@ -34,6 +34,31 @@ class CatalogTest(Fixture):
         (directory / 'demo.toml').write_bytes((self.catalog / 'software/items/demo.toml').read_bytes())
         self.assertEqual(install_config.read_items(directory, 'linux.apt', schema), [])
 
+    def test_read_items_uses_requested_schema_once(self):
+        from shutil import copytree
+        from dotfile_viewer import install_config
+        schema = copytree(install_config.ROOT / 'install/schema', self.root / 'schema')
+        fields = schema / 'fields.tsv'
+        fields.write_text(fields.read_text().replace('packages\t.+', 'packages\tallowed'))
+        directory = self.root / 'items'
+        directory.mkdir()
+        for suffix, body in [('conf', '[linux.apt]\norder=1\nmethod=apt\nsource_kind=default\npackages=allowed'),
+                             ('toml', 'schema_version=1\n[install."linux.apt"]\norder="1"\nmethod="apt"\nsource_kind="default"\npackages="allowed"')]:
+            path = directory / ('demo.' + suffix)
+            path.write_text(body)
+            with (patch.object(InstallSchema, '__init__', autospec=True, side_effect=InstallSchema.__init__) as init,
+                  patch.object(InstallSchema, 'normalize', autospec=True, side_effect=InstallSchema.normalize) as norm):
+                rows = install_config.read_items(directory, 'linux.apt', schema)
+                self.assertEqual([row['packages'] for row in rows], ['allowed'])
+                init.assert_called_once()
+                norm.assert_called_once()
+            path.write_text(body.replace('allowed', 'denied'))
+            with self.assertRaisesRegex(DeclarationError, 'Invalid packages'):
+                install_config.read_items(directory, 'linux.apt', schema)
+        path.write_text(body + '\ndepends_on="missing"')
+        with self.assertRaises(DeclarationError):
+            install_config.read_items(directory, 'macos', schema)
+
     def test_dependency_merge(self):
         schema = InstallSchema()
         self.assertEqual(schema.dependencies('z b', 'a z'), 'z b a')

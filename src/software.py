@@ -78,16 +78,23 @@ def _validate(identity, data, schema, normalized=None):
 
 
 def read_catalog(directory=ROOT / 'software/items'):
-    schema = InstallSchema()
+    catalog, _ = _read_catalog(directory, InstallSchema())
+    return catalog
+
+
+def _read_catalog(directory, schema, requested_platform=None):
     normalized = {}
     catalog = {p.stem: _validate(p.stem, tomllib.loads(p.read_text(encoding='utf-8')), schema, normalized) for p in sorted(Path(directory).glob('*.toml'))}
     if not catalog:
         raise DeclarationError('No software declarations found')
     # Validate all platform dependency graphs, including configuration-only items.
+    requested_items = []
     for platform in PLATFORMS:
         _selection_ids(catalog, platform, 'native', ['all'], schema, filter_environment=False)
-        _installation(catalog, platform, schema, normalized)
-    return catalog
+        items = _installation(catalog, platform, schema, normalized)
+        if platform == requested_platform:
+            requested_items = items
+    return catalog, requested_items
 
 
 def installation(catalog, platform):
