@@ -67,6 +67,10 @@ def run(args):
         return editor.configurations()
     if args.command == 'files':
         return editor.files(args.software, args.config)
+    if args.command == 'write':
+        raw = sys.stdin.buffer.read() if args.source == '-' else Path(args.source).read_bytes()
+        content = raw.decode('utf-8-sig')
+        return editor.save(args.software, args.config, args.file, content, args.expected_version, detach=args.detach_hardlink)
     current = editor.read(args.software, args.config, args.file)
     if args.command == 'show':
         if args.json:
@@ -77,10 +81,6 @@ def run(args):
         text = current['content'].replace('\n', '\r\n' if current['newline'] == 'crlf' else '\n')
         sys.stdout.buffer.write((b'\xef\xbb\xbf' if current['bom'] else b'') + text.encode('utf-8'))
         return None
-    if args.command == 'write':
-        raw = sys.stdin.buffer.read() if args.source == '-' else Path(args.source).read_bytes()
-        content = raw.decode('utf-8-sig')
-        return editor.save(args.software, args.config, args.file, content, args.expected_version, detach=args.detach_hardlink)
 
     if not current['editable']:
         raise api.CoreError(current['reason'])

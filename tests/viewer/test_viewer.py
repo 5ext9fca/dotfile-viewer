@@ -837,6 +837,27 @@ class ViewerTest(Fixture):
             with api.deployment_lease():
                 pass
 
+    def test_script_write_reads_candidate_before_save(self):
+        target = self.config / 'demo/settings'
+        draft = self.root / 'draft'
+        for source in (str(draft), '-'):
+            for case, raw, code in [('same', b'hello\n', 0), ('save', b'new', 0),
+                                    ('invalid', b'\xff', 3), ('stale', b'new', 4)]:
+                with self.subTest(source=source, case=case):
+                    target.write_bytes(b'hello\r\n')
+                    version = 'stale' if case == 'stale' else self.read()['version']
+                    draft.write_bytes(raw)
+                    args = ['write', 'demo', 'settings', 'settings', '--from', source, '--expected-version', version]
+                    with (patch.object(api, 'Editor', return_value=self.editor),
+                          patch.object(cli.sys, 'stdin', io.TextIOWrapper(io.BytesIO(raw))),
+                          patch('dotfile_viewer.editor.load_catalog', wraps=api.load_catalog) as load,
+                          patch.object(self.editor, '_read_file', wraps=self.editor._read_file) as read,
+                          redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO())):
+                        self.assertEqual(cli.main(args), code)
+                    self.assertEqual(load.call_count, int(case != 'invalid'))
+                    self.assertEqual(read.call_count, int(case != 'invalid'))
+                    self.assertEqual(target.read_bytes(), b'new' if case == 'save' else b'hello\r\n')
+
     @unittest.skipIf(os.name == 'nt', 'Unix XDG CLI fixture')
     def test_cli_script_write(self):
         import subprocess
