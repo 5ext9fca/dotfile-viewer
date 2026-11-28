@@ -80,3 +80,5 @@ edit 的外部草稿与 write 的文件及标准输入共用候选字节解码�
 一次性入口 apply_snapshot(path, *, dry=False, detach=False, expected_version=None, lease=None, platform=None, roots=None, backup=None, protected=()) 与会话共用版本校验。例如 api.apply_snapshot(path, expected_version=plan["version"])。只有 None 省略检查。
 
 显式选择可传单个 ID（如 api.selection(software="demo")），也可传有序列表、元组或迭代器。多个 ID 保留原始顺序，all 单独使用。profile 与 software 按是否传值互斥。
+
+清单校验在单次解析中按软件 ID 和平台复用安装声明的规范化结果，环境筛选和安装图排序共享这份结果。合并 requires 时生成独立安装行。

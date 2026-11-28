@@ -264,6 +264,45 @@ class CatalogTest(Fixture):
             api.write_catalog({'demo': catalog['demo'], 'invalid': {}}, partial)
         self.assertEqual([p.name for p in partial.iterdir()], ['demo.toml'])
 
+    def test_manifest_normalizes_each_installation_once(self):
+        platform = api.Platform('macos', 'arm64', 'native')
+        catalog = api.load_catalog()
+        declarations = api.select(catalog, 'macos', 'native', 'ripgrep')
+        for names in (['ripgrep'], ['all']):
+            snapshot = api.Snapshot(platform, '2026-01-01T00:00:00+00:00', tuple(names), declarations, ())
+            document = snapshot.document()
+            with patch.object(InstallSchema, 'normalize', autospec=True, side_effect=InstallSchema.normalize) as normalize:
+                self.assertEqual(api.Snapshot.parse(document), snapshot)
+                self.assertEqual(normalize.call_count, len(declarations))
+        document['software']['ripgrep']['install']['macos']['method'] = 'invalid'
+        with self.assertRaises(api.SnapshotError):
+            api.Snapshot.parse(document)
+
+    def test_manifest_wsl_and_alternative_dependencies(self):
+        branch = 'linux.apt'
+        catalog = {
+            'cfg': dict(schema_version=1, requires={branch: ['tool']},
+                        config=[dict(id='c', platforms=[branch], root='home', path='c')]),
+            'tool': dict(schema_version=1, install={
+                branch: dict(order='1', methods='apt cargo', preferred_method='apt'),
+                branch + '/apt': dict(packages='tool', source_kind='default', detect_files='path:tool'),
+                branch + '/cargo': dict(packages='tool', source_kind='default', detect_files='path:tool',
+                                        depends_on='runtime')}),
+            'runtime': dict(schema_version=1, install={
+                branch: dict(order='1', method='apt', packages='runtime', source_kind='default')}),
+        }
+        software = api.select(catalog, branch, 'wsl', ['cfg'])
+        self.assertEqual(list(software), ['runtime', 'tool', 'cfg'])
+        entry = dict(software='cfg', config='c', path='', kind='directory', size=0, sha256='', executable=0)
+        snapshot = api.Snapshot(api.Platform(branch, 'x86_64', 'wsl'), '2026-01-01T00:00:00+00:00',
+                                ('cfg',), software, (entry,))
+        with patch.object(InstallSchema, 'normalize', autospec=True, side_effect=InstallSchema.normalize) as normalize:
+            self.assertEqual(api.Snapshot.parse(snapshot.document()), snapshot)
+            self.assertEqual(normalize.call_count, 2)
+        software['runtime']['install'][branch]['environments'] = 'native'
+        with self.assertRaisesRegex(api.SnapshotError, 'unavailable in wsl'):
+            api.Snapshot.parse(snapshot.document())
+
     def test_schema_reuse_for_catalog_and_manifest(self):
         items = self.catalog / 'software/items'
         for name, order in [('client', 1), ('runtime', 2)]:

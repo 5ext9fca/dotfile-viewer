@@ -6,7 +6,7 @@ import re
 from .errors import SnapshotError
 from .install_schema import DeclarationError, InstallSchema
 from .paths import is_excluded
-from .software import PLATFORMS, _installation, _select, relative, validate
+from .software import PLATFORMS, _installation, _select, _validate, relative
 
 
 @dataclass(frozen=True)
@@ -69,19 +69,20 @@ def _validate_software(catalog, platform, names):
     if not isinstance(catalog, dict) or not catalog:
         raise SnapshotError('Empty snapshot software set')
     schema = InstallSchema()
+    normalized = {}
     for identity, declaration in catalog.items():
         try:
-            validate(identity, declaration, schema)
+            _validate(identity, declaration, schema, normalized)
         except (DeclarationError, TypeError, ValueError, KeyError, AttributeError) as exc:
             raise SnapshotError(f'Invalid snapshot software {identity}: {exc}') from exc
         if (any(p != platform.branch and not p.startswith(platform.branch + '/') for p in declaration.get('install', {}))
                 or any(c['platforms'] != [platform.branch] for c in declaration.get('config', []))
                 or any(p != platform.branch for p in declaration.get('requires', {}))):
             raise SnapshotError('Snapshot contains declarations for another platform')
-    selected = _select(catalog, platform.branch, platform.environment, names, schema)
+    selected = _select(catalog, platform.branch, platform.environment, names, schema, normalized=normalized)
     if selected != catalog:
         raise SnapshotError('Snapshot software differs from selection closure')
-    _installation(catalog, platform.branch, schema)
+    _installation(catalog, platform.branch, schema, normalized)
 
 
 def _validate_entries(entries, catalog):
