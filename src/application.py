@@ -9,7 +9,7 @@ import tempfile
 from .errors import CoreError, SnapshotError
 from .files import observe, publish_file, new_session, state_home, protected_state, atomic_json, ConflictError, ConfirmationRequired
 from .host import host, host_roots
-from .lease import borrowed_lease, deployment_lease
+from .lease import deployment_lease, lease_credentials
 from .paths import no_links
 from .snapshot import verify_archive, targets, member_name
 
@@ -110,8 +110,7 @@ class _PreparedSnapshot:
         return dict(version=_plan_version(rows), items=rows)
 
     def _apply_lease(self, lease, dry):
-        lease = lease or {}
-        return deployment_lease(path=lease.get('path'), token=lease.get('token'), dry=dry)
+        return deployment_lease(**lease_credentials(lease), dry=dry)
 
     def apply(self, *, dry=False, expected_version=None, detach=False, lease=None):
         self._ensure_open()
@@ -169,11 +168,7 @@ class _PreparedSnapshot:
 class SnapshotSession(_PreparedSnapshot):
     """Check destinations immediately, before a caller starts installation."""
     def __init__(self, path, *, platform=None, roots=None, backup=None, protected=(), lease=None):
-        self._bound_lease = None
-        if lease is not None:
-            if not lease.get('path') or not lease.get('token'):
-                raise CoreError('Borrowed deployment lease requires path and token')
-            self._bound_lease = dict(path=lease['path'], token=lease['token'])
+        self._bound_lease = lease_credentials(lease)
         super().__init__(path, platform=platform, roots=roots, backup=backup, protected=protected)
         try:
             self.preview()
@@ -188,8 +183,8 @@ class SnapshotSession(_PreparedSnapshot):
         return plan
 
     def _apply_lease(self, lease, dry):
-        if self._bound_lease is None:
+        if not self._bound_lease:
             return super()._apply_lease(lease, dry)
-        if lease is not None and lease != self._bound_lease:
+        if lease is not None and lease_credentials(lease) != self._bound_lease:
             raise CoreError('Conflicting deployment lease for snapshot session')
-        return borrowed_lease(**self._bound_lease, dry=dry)
+        return deployment_lease(**self._bound_lease, dry=dry)

@@ -1,4 +1,5 @@
 """One cooperative lease implementation for Python, Bash and PowerShell."""
+from collections.abc import Mapping
 from contextlib import contextmanager
 from pathlib import Path
 import json
@@ -21,11 +22,13 @@ def _matches_owner(path, token):
             and owner.is_file() and owner.read_text().strip().split('|')[-1] == token)
 
 
-@contextmanager
-def borrowed_lease(path, token, *, dry=False):
-    if not dry and not _matches_owner(Path(path), token):
-        raise CoreError('Borrowed deployment lease is no longer held')
-    yield
+def lease_credentials(lease):
+    if lease is None:
+        return {}
+    if (not isinstance(lease, Mapping) or not isinstance(lease.get('path'), (str, Path))
+            or not lease['path'] or not isinstance(lease.get('token'), str) or not lease['token']):
+        raise CoreError('Borrowed deployment lease requires path and token')
+    return dict(path=str(lease['path']), token=lease['token'])
 
 
 def acquire(path=None, token=None, owner_pid=None):
@@ -34,7 +37,9 @@ def acquire(path=None, token=None, owner_pid=None):
     if path.is_symlink():
         raise CoreError('Deployment lease must not be a link')
     owner_path = path / 'owner'
-    if _matches_owner(path, token):
+    if token:
+        if not _matches_owner(path, token):
+            raise CoreError('Borrowed deployment lease is no longer held')
         return dict(path=str(path), token=token, owned=False)
     token = uuid.uuid4().hex
     owner = f'{owner_pid or os.getpid()}|{socket.gethostname()}|{token}'

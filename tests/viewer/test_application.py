@@ -260,6 +260,41 @@ class ApplicationTest(Fixture):
         with api.deployment_lease(), self.assertRaises(api.CoreError):
             session.apply()
 
+    def test_stale_credentials_never_create_a_lease(self):
+        import subprocess
+        import sys
+        self.capture()
+        lock = self.root / 'lease'
+        options = dict(platform=self.platform, roots=self.roots, backup=self.editor.backup)
+        with api.deployment_lease() as credentials:
+            with patch.dict(os.environ, DOTFILES_DEPLOYMENT_TOKEN=credentials['token']):
+                command = [sys.executable, '-m', 'dotfile_viewer.lease', 'acquire']
+                self.assertFalse(json.loads(subprocess.check_output(command))['owned'])
+                fields = subprocess.check_output([*command, '--tsv'], text=True).strip().split('\t')
+                self.assertEqual(fields, [str(lock), credentials['token'], '0'])
+        with api.SnapshotSession(self.archive, **options) as session:
+            for apply in (session.apply, lambda **kw: api.apply_snapshot(self.archive, **options, **kw)):
+                with patch('dotfile_viewer.application.observe', side_effect=AssertionError):
+                    with self.assertRaises(api.CoreError):
+                        apply(lease=credentials)
+                    for invalid in ({}, {'path': str(lock)}, {'token': 'x'}):
+                        with self.assertRaises(api.CoreError):
+                            apply(lease=invalid, dry=True)
+                self.assertEqual(apply(lease=credentials, dry=True)['status'], 'preview')
+        with patch.dict(os.environ, DOTFILES_DEPLOYMENT_TOKEN=credentials['token']):
+            self.assertEqual(subprocess.run(command, capture_output=True).returncode, 73)
+            self.assertFalse(lock.exists())
+            lock.mkdir()
+            with self.assertRaises(api.CoreError), api.deployment_lease():
+                pass
+            self.assertEqual(list(lock.iterdir()), [])
+            owner = lock / 'owner'
+            owner.write_text('1|host|other')
+            with self.assertRaises(api.CoreError), api.deployment_lease(**credentials):
+                pass
+            self.assertEqual(owner.read_text(), '1|host|other')
+        self.assertFalse(self.editor.backup.exists())
+
     def test_lease_nested_and_stale(self):
         with api.deployment_lease() as lease:
             with api.deployment_lease(**lease):

@@ -39,3 +39,5 @@ with api.deployment_lease(dry=dry) as lease, api.SnapshotSession(path, lease=lea
         # 编排方在此检查报告路径，并使用 catalog 和 context 预演或执行安装。
         result = viewer.apply(dry=dry, detach=detach)
 ```
+
+显式或环境传入的非空部署令牌表示借用既有锁。外层释放后应丢弃凭据。向快照 API 传入 lease 时须同时提供 path 和 token，包括 dry-run。
