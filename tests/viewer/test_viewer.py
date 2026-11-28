@@ -794,6 +794,25 @@ class ViewerTest(Fixture):
                 self.assertEqual((entry['size'], entry['sha256']), (len(data), hashlib.sha256(data).hexdigest()))
                 self.assertEqual((staged / 'payload/demo/settings/root' / entry['path']).read_bytes(), data)
 
+    def test_streamed_manifest_bytes(self):
+        from dotfile_viewer.snapshot import _write_manifest
+        for entries in ([], [{'path': '中文"' + chr(92) + str(i)} for i in range(8192)]):
+            document = dict(created_at='2026-01-01T00:00:00+00:00', entries=entries)
+            with zipfile.ZipFile(self.archive, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+                _write_manifest(archive, document)
+            expected = json.dumps(document, ensure_ascii=False, indent=2).encode()
+            with zipfile.ZipFile(self.archive) as archive:
+                self.assertEqual(archive.read('manifest.json'), expected)
+
+    def test_manifest_write_failure_cleans_archive(self):
+        def fail(document, stream, **kwargs):
+            stream.write('{')
+            raise OSError('manifest failed')
+        with patch('dotfile_viewer.snapshot.json.dump', side_effect=fail), self.assertRaisesRegex(OSError, 'manifest failed'):
+            self.capture()
+        self.assertFalse(self.archive.exists())
+        self.assertEqual(list(self.root.glob('.dotfiles-snapshot-*')), [])
+
     def test_export_stream_write_failure(self):
         original = zipfile.ZipFile.open
         def broken_open(archive, name, mode='r', **kwargs):

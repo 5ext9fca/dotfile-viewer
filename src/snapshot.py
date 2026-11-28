@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import errno
 import hashlib
+import io
 import json
 import os
 import re
@@ -255,6 +256,12 @@ def _verify_archive(path, destination=None):
     return snapshot
 
 
+def _write_manifest(archive, document):
+    with archive.open('manifest.json', 'w') as member:
+        with io.TextIOWrapper(io.BufferedWriter(member, 64 * 1024), encoding='utf-8', newline='\n') as stream:
+            json.dump(document, stream, ensure_ascii=False, indent=2)
+
+
 def capture(catalog, platform, selection, roots, output, dry=False):
     platform.validate()
     chosen = select(catalog, platform.branch, platform.environment, selection)
@@ -303,9 +310,10 @@ def capture(catalog, platform, selection, roots, output, dry=False):
         if before:
             raise SnapshotError('Configuration tree changed during capture; stop writers and retry')
         snapshot = Snapshot(platform, datetime.now(timezone.utc).isoformat(), tuple(selection), chosen, tuple(entries))
-        Snapshot.parse(snapshot.document())
+        document = snapshot.document()
+        Snapshot.parse(document)
         if archive:
-            archive.writestr('manifest.json', json.dumps(snapshot.document(), ensure_ascii=False, indent=2))
+            _write_manifest(archive, document)
             archive.close()
             archive = None
             verify_archive(temporary)
