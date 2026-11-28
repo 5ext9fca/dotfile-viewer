@@ -20,6 +20,10 @@ def decode_text(data):
     return dict(editable=True, content=text, bom=data.startswith(BOM_UTF8), newline=newline)
 
 
+def decode_candidate(data):
+    return data.decode('utf-8-sig')
+
+
 def normalize_candidate(content):
     content = content.replace('\r\n', '\n')
     if '\r' in content or '\x00' in content:

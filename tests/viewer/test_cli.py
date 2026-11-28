@@ -160,6 +160,51 @@ class CliTest(Fixture):
                 self.assertEqual(draft.read_bytes(), raw)
                 self.assertEqual(target.read_bytes(), b'external' if expected_code == 4 else b'hello\r\n')
 
+    def test_candidate_bytes_across_cli_inputs(self):
+        target = self.config / 'demo/settings'
+        source = self.root / 'candidate'
+        initial = b'hello\r\n'
+        for raw, stale, code, expected in (
+            (b'\xef\xbb\xbfa\nb', False, 0, b'a\r\nb'),
+            (b'a\r\nb', False, 0, b'a\r\nb'),
+            (b'a\rb', False, 3, initial),
+            (b'null\x00', False, 3, initial),
+            (b'bad\xff', False, 3, initial),
+            (b'a\rb', True, 4, b'external'),
+            (b'bad\xff', True, 3, b'external'),
+        ):
+            for mode in ('edit', 'file', 'stdin'):
+                with self.subTest(mode=mode, raw=raw, stale=stale):
+                    target.write_bytes(initial)
+                    version = self.read()['version']
+                    source.write_bytes(raw)
+                    draft = None
+                    def edit(arguments, **kwargs):
+                        nonlocal draft
+                        draft = Path(arguments[-1])
+                        draft.write_bytes(raw)
+                        if stale:
+                            target.write_bytes(b'external')
+                        return cli.subprocess.CompletedProcess(arguments, 0)
+                    args = ['edit' if mode == 'edit' else 'write', 'demo', 'settings', 'settings']
+                    if mode != 'edit':
+                        if stale:
+                            target.write_bytes(b'external')
+                        args += ['--from', '-' if mode == 'stdin' else str(source), '--expected-version', version]
+                    with (patch.object(api, 'Editor', return_value=self.editor),
+                          patch.dict(os.environ, VISUAL='editor'), patch.object(tempfile, 'tempdir', str(self.root)),
+                          patch.object(cli.subprocess, 'run', side_effect=edit),
+                          patch.object(cli.sys, 'stdin', io.TextIOWrapper(io.BytesIO(raw))),
+                          redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()) as errors):
+                        self.assertEqual(cli.main(args), code)
+                    self.assertEqual(target.read_bytes(), expected)
+                    if mode == 'edit':
+                        if code:
+                            self.assertIn(str(draft.parent), errors.getvalue())
+                            self.assertEqual(draft.read_bytes(), raw)
+                        else:
+                            self.assertFalse(draft.parent.exists())
+
     def test_script_write_reads_candidate_before_save(self):
         target = self.config / 'demo/settings'
         draft = self.root / 'draft'

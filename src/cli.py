@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 from . import api
-from .text_codec import encode_text
+from .text_codec import decode_candidate, encode_text
 from .install_schema import DeclarationError
 
 
@@ -86,7 +86,7 @@ def _files(args):
 def _write(args):
     editor = api.Editor(args.catalog)
     raw = sys.stdin.buffer.read() if args.source == '-' else Path(args.source).read_bytes()
-    content = raw.decode('utf-8-sig')
+    content = decode_candidate(raw)
     return editor.save(args.software, args.config, args.file, content, args.expected_version, detach=args.detach_hardlink)
 
 
@@ -120,7 +120,7 @@ def _edit(args):
         if code:
             raise api.CoreError(f'Editor exited with code {code}; original file unchanged')
         try:
-            content = file.read_text(encoding='utf-8-sig')
+            content = decode_candidate(file.read_bytes())
             return editor.save(args.software, args.config, args.file, content, current['version'], detach=args.detach_hardlink)
         except (api.CoreError, OSError, UnicodeError) as exc:
             retain = True
