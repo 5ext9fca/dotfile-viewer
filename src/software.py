@@ -116,7 +116,12 @@ def _select(catalog, platform, environment, names, schema, *, filter_environment
             return any(platform in c['platforms'] and environment in c.get('environments', ['native', 'wsl']) for c in data.get('config', []))
         item = schema.normalize(data['install'], platform)
         return environment in item['environments'].split() and not (environment == 'wsl' and item.get('wsl_provider'))
-    roots = sorted(i for i, d in candidates.items() if not filter_environment or eligible(d)) if names == ['all'] else names
+    eligible_ids = None
+    roots = names
+    if names == ['all']:
+        if filter_environment:
+            eligible_ids = {i for i, data in candidates.items() if eligible(data)}
+        roots = sorted(candidates if eligible_ids is None else eligible_ids)
     if not roots and names == ['all']:
         return {}
     if not roots or len(roots) != len(set(roots)):
@@ -130,8 +135,10 @@ def _select(catalog, platform, environment, names, schema, *, filter_environment
         if identity not in candidates:
             raise DeclarationError(f'Unknown or unavailable software: {identity}')
         data = candidates[identity]
-        if filter_environment and not eligible(data):
-            raise DeclarationError(f'Software unavailable in {environment}: {identity}')
+        if filter_environment:
+            allowed = identity in eligible_ids if eligible_ids is not None else eligible(data)
+            if not allowed:
+                raise DeclarationError(f'Software unavailable in {environment}: {identity}')
         visiting.add(identity)
         installs = data.get('install', {})
         deps = list(data.get('requires', {}).get(platform, []))

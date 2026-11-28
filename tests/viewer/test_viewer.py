@@ -90,6 +90,24 @@ class ViewerTest(Fixture):
             with self.subTest(names=names):
                 self.assertEqual(api.installation_roots(catalog, platform, 'native', names), expected)
 
+    def test_all_selection_checks_eligibility_once(self):
+        platform = 'linux.apt'
+        native = dict(method='apt', packages='runtime', source_kind='default', order='1', environments='native')
+        catalog = {'runtime': dict(schema_version=1, install={platform: native}),
+                   'cfg': dict(schema_version=1, config=[dict(id='cfg', root='home', path='cfg',
+                                                            platforms=[platform], environments=['native'])])}
+        with patch.object(InstallSchema, 'normalize', autospec=True, side_effect=InstallSchema.normalize) as normalize:
+            self.assertEqual(list(api.select(catalog, platform, 'native', ['all'])), ['cfg', 'runtime'])
+            normalize.assert_called_once()
+        self.assertEqual(api.select(catalog, platform, 'wsl', ['all']), {})
+        catalog['cfg']['config'][0]['environments'] = ['wsl']
+        catalog['cfg']['requires'] = {platform: ['runtime']}
+        for names in (['all'], ['cfg']):
+            with self.assertRaisesRegex(DeclarationError, 'unavailable in wsl: runtime'):
+                api.select(catalog, platform, 'wsl', names)
+        self.assertEqual(list(api.select(catalog, platform, 'wsl', ['all'], filter_environment=False)),
+                         ['runtime', 'cfg'])
+
     def test_catalog_and_profiles(self):
         self.assertEqual(api.selection(self.catalog, profile='test'), ['demo'])
         self.assertIn('fish', api.load_catalog())
