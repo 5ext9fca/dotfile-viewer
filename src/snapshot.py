@@ -125,8 +125,12 @@ def member_name(entry):
 
 
 def targets(catalog, roots):
+    return _targets(configurations(catalog), roots)
+
+
+def _targets(configs, roots):
     result = {}
-    for key, config in configurations(catalog).items():
+    for key, config in configs.items():
         value = roots.get(config['root'], '')
         if not value or not Path(value).is_absolute():
             raise SnapshotError(f'Missing absolute configuration root: {config["root"]}')
@@ -143,11 +147,10 @@ def targets(catalog, roots):
     return result
 
 
-def inventory(catalog, roots):
-    locations = targets(catalog, roots)
+def _inventory(configs, locations):
     result = {}
     for key, path in locations.items():
-        exclusions = configurations(catalog)[key].get('exclude', [])
+        exclusions = configs[key].get('exclude', [])
         def visit(current, relative_path):
             if is_excluded(relative_path, exclusions):
                 return
@@ -236,11 +239,12 @@ def capture(catalog, platform, selection, roots, output, dry=False):
         raise SnapshotError('Snapshot output already exists')
     if not output.parent.is_dir():
         raise SnapshotError('Snapshot output directory does not exist')
-    locations = targets(chosen, roots)
+    configs = configurations(chosen)
+    locations = _targets(configs, roots)
     physical_output = output.parent.resolve() / output.name
     if any(physical_output == p or physical_output.is_relative_to(p) for p in locations.values()):
         raise SnapshotError('Snapshot output overlaps a configuration source')
-    before = inventory(chosen, roots)
+    before = _inventory(configs, locations)
     entries = []
     # Dry runs still check readability and content, but produce no output archive.
     temporary = None
@@ -275,7 +279,7 @@ def capture(catalog, platform, selection, roots, output, dry=False):
                 entry['sha256'] = digest.hexdigest()
                 entry['executable'] = observed[2] & 0o111
             entries.append(entry)
-        if inventory(chosen, roots) != before:
+        if _inventory(configs, _targets(configs, roots)) != before:
             raise SnapshotError('Configuration tree changed during capture; stop writers and retry')
         snapshot = Snapshot(platform, datetime.now(timezone.utc).isoformat(), tuple(selection), chosen, tuple(entries))
         Snapshot.parse(snapshot.document())

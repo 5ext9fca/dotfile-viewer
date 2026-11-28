@@ -286,6 +286,40 @@ class ViewerTest(Fixture):
                         else:
                             self.assertEqual(output.getvalue(), '')
 
+    def test_capture_reuses_index(self):
+        from dotfile_viewer import snapshot
+        for count in (1, 8):
+            configs = []
+            for i in range(count):
+                name = f'item-{i}'
+                (self.config / name).write_text(name)
+                configs.append(dict(id=name, platforms=['macos'], root='config_home', path=name))
+            catalog = {'demo': dict(schema_version=1, config=configs)}
+            output = self.root / f'{count}.zip'
+            with patch.object(snapshot, 'configurations', wraps=snapshot.configurations) as index:
+                preview = snapshot.capture(catalog, self.platform, ['demo'], self.roots, output, dry=True)
+                self.assertEqual(index.call_count, 2)
+            saved = snapshot.capture(catalog, self.platform, ['demo'], self.roots, output)
+            self.assertEqual(saved.entries, preview.entries)
+            self.assertEqual(api.verify_archive(output).entries, preview.entries)
+
+    def test_capture_rechecks_tree_and_root(self):
+        from dotfile_viewer import snapshot
+        inventory = snapshot._inventory
+        for change in ('add', 'redirect'):
+            def scan(configs, locations):
+                result = inventory(configs, locations)
+                if change == 'add':
+                    (self.config / 'demo/new').touch()
+                else:
+                    self.roots['config_home'] = str(self.root / 'alternate')
+                return result
+
+            (self.root / 'alternate/demo').mkdir(parents=True, exist_ok=True)
+            with patch.object(snapshot, '_inventory', side_effect=scan), self.assertRaises(api.SnapshotError):
+                self.capture()
+            self.assertFalse(self.archive.exists())
+
     def test_export_dry(self):
         api.export_snapshot(self.archive, catalog=self.catalog, profile='test', platform=self.platform, roots=self.roots, dry=True)
         self.assertFalse(self.archive.exists())
