@@ -131,6 +131,11 @@ def _edit(args):
             directory.cleanup()
 
 
+def _print_error(exc):
+    detail = '; '.join([str(exc), *getattr(exc, '__notes__', ())])
+    print(f'error: {detail}', file=sys.stderr)
+
+
 def main(argv=None):
     try:
         if sys.version_info < (3, 14):
@@ -141,13 +146,13 @@ def main(argv=None):
             print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     except DeclarationError as exc:
-        print(f'error: {exc}', file=sys.stderr)
+        _print_error(exc)
         return 2
     except api.ConflictError as exc:
-        print(f'error: {exc}', file=sys.stderr)
+        _print_error(exc)
         return 4
     except (api.CoreError, OSError, ValueError) as exc:
-        print(f'error: {exc}', file=sys.stderr)
+        _print_error(exc)
         return 3
 
 

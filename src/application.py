@@ -124,37 +124,46 @@ class _PreparedSnapshot:
             _confirm_detach(plan, detach)
             if all(row['action'] == 'skip' for row in plan['items']):
                 return dict(status='unchanged', **plan)
-            session = new_session(self._backup)
-            result = dict(status='running', session=str(session), items=[])
-            report = session / 'result.json'
+            return self._apply_batch(plan, detach)
+
+    def _apply_batch(self, plan, detach):
+        session = new_session(self._backup)
+        result = dict(status='running', session=str(session), items=[])
+        report = session / 'result.json'
+        atomic_json(report, result)
+        try:
+            for entry, row in zip(self._entries, plan['items'], strict=True):
+                result['items'].append(self._apply_item(entry, row, session, detach))
+                atomic_json(report, result)
+            result['status'] = 'applied'
             atomic_json(report, result)
+            return result
+        except BaseException as exc:
+            result.update(status='failed', error=str(exc))
             try:
-                for entry, row in zip(self._entries, plan['items'], strict=True):
-                    target = Path(row['target'])
-                    if row['action'] == 'skip':
-                        if entry['kind'] == 'file' and observe(target)['version'] != row['version']:
-                            raise ConflictError(f'File changed: {target}')
-                        result['items'].append(dict(row, status='skipped'))
-                    elif row['action'] == 'mkdir':
-                        no_links(target)
-                        if target.exists():
-                            raise ConflictError(f'Target appeared: {target}')
-                        target.mkdir(parents=True, mode=0o700)
-                        result['items'].append(dict(row, status='created'))
-                    else:
-                        no_links(target)
-                        target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-                        saved = publish_file(target, self._scratch / 'unpacked' / member_name(entry), row['version'], session,
-                                             detach=detach, executable=entry['executable'], preserve_permissions=False)
-                        result['items'].append(dict(row, **{k: v for k, v in saved.items() if k not in row}))
-                    atomic_json(report, result)
-                result['status'] = 'applied'
                 atomic_json(report, result)
-                return result
-            except BaseException as exc:
-                result.update(status='failed', error=str(exc))
-                atomic_json(report, result)
-                raise
+            except Exception as report_error:
+                exc.add_note(f'Could not write failure report {report}: {report_error}')
+            raise
+
+    def _apply_item(self, entry, row, session, detach):
+        target = Path(row['target'])
+        if row['action'] == 'skip':
+            if entry['kind'] == 'file' and observe(target)['version'] != row['version']:
+                raise ConflictError(f'File changed: {target}')
+            return dict(row, status='skipped')
+        elif row['action'] == 'mkdir':
+            no_links(target)
+            if target.exists():
+                raise ConflictError(f'Target appeared: {target}')
+            target.mkdir(parents=True, mode=0o700)
+            return dict(row, status='created')
+        else:
+            no_links(target)
+            target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            saved = publish_file(target, self._scratch / 'unpacked' / member_name(entry), row['version'], session,
+                                 detach=detach, executable=entry['executable'], preserve_permissions=False)
+            return dict(row, **{k: v for k, v in saved.items() if k not in row})
 
 
 class SnapshotSession(_PreparedSnapshot):

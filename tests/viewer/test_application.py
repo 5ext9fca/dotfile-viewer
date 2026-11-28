@@ -1,4 +1,4 @@
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 import hashlib
 import io
 import json
@@ -7,7 +7,7 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 from dotfile_viewer import api, cli
-from dotfile_viewer.files import observe
+from dotfile_viewer.files import atomic_json, observe
 from viewer_fixture import Fixture
 
 
@@ -174,6 +174,54 @@ class ApplicationTest(Fixture):
                 session.apply(expected_version=plan['version'])
         self.assertEqual(target.read_bytes(), b'hello\r\n')
         self.assertEqual(session.destination_roots, (self.config / 'demo',))
+
+    def test_batch_preserves_primary_error(self):
+        self.capture()
+        target = self.config / 'demo/settings'
+        target.write_bytes(b'local')
+        conflict = api.ConflictError('item conflict')
+        def fail_report(path, result):
+            if result['status'] == 'failed':
+                raise OSError('report unavailable')
+            atomic_json(path, result)
+
+        with (api.SnapshotSession(self.archive, roots=self.roots, platform=self.platform, backup=self.editor.backup) as session,
+              patch.object(session, '_apply_item', side_effect=conflict),
+              patch('dotfile_viewer.application.atomic_json', side_effect=fail_report),
+              self.assertRaises(api.ConflictError) as raised):
+            session.apply()
+        self.assertIs(raised.exception, conflict)
+        report, = self.editor.backup.glob('*/result.json')
+        self.assertEqual(json.loads(report.read_text())['status'], 'running')
+        self.assertEqual(target.read_bytes(), b'local')
+        with patch.object(api, 'apply_snapshot', side_effect=conflict), redirect_stderr(io.StringIO()) as errors:
+            self.assertEqual(cli.main(['snapshot', 'apply', '--snapshot', str(self.archive)]), 4)
+        for detail in ('item conflict', str(report), 'report unavailable'):
+            self.assertIn(detail, errors.getvalue())
+
+    def test_batch_keeps_completed_file_on_later_failure(self):
+        first = self.config / 'demo/a'
+        first.write_bytes(b'archived')
+        self.capture()
+        for failure in ('next-file', 'final-report'):
+            first.write_bytes(b'local')
+            backup = self.root / failure
+            def write_report(path, result):
+                if failure == 'final-report' and result['status'] == 'applied':
+                    raise OSError('final report')
+                atomic_json(path, result)
+                if failure == 'next-file' and any(row['file'] == 'a' for row in result['items']):
+                    (self.config / 'demo/settings').write_bytes(b'external')
+
+            with (patch('dotfile_viewer.application.atomic_json', side_effect=write_report),
+                  self.assertRaises(api.ConflictError if failure == 'next-file' else OSError)):
+                api.apply_snapshot(self.archive, roots=self.roots, platform=self.platform, backup=backup)
+            report, = backup.glob('*/result.json')
+            result = json.loads(report.read_text())
+            self.assertEqual(result['status'], 'failed')
+            saved = next(row for row in result['items'] if row['file'] == 'a')
+            self.assertEqual(Path(saved['backup']).read_bytes(), b'local')
+            self.assertEqual(first.read_bytes(), b'archived')
 
     def test_preview_conflict(self):
         self.capture()
