@@ -215,6 +215,17 @@ def open_manifest(archive):
     return snapshot
 
 
+def _hash_payload(source, output=None):
+    digest = hashlib.sha256()
+    size = 0
+    while chunk := source.read(1024 * 1024):
+        digest.update(chunk)
+        size += len(chunk)
+        if output is not None:
+            output.write(chunk)
+    return size, digest.hexdigest()
+
+
 def _verify_archive(path, destination=None):
     """Validate and optionally stage content; never use ZipFile.extract."""
     with zipfile.ZipFile(path) as archive:
@@ -231,18 +242,13 @@ def _verify_archive(path, destination=None):
             if target:
                 target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             output = target.open('xb') if target else None
-            digest, size = hashlib.sha256(), 0
             try:
                 with archive.open(info) as source:
-                    while chunk := source.read(1024 * 1024):
-                        digest.update(chunk)
-                        size += len(chunk)
-                        if output:
-                            output.write(chunk)
+                    size, digest = _hash_payload(source, output)
             finally:
                 if output:
                     output.close()
-            if size != entry['size'] or digest.hexdigest() != entry['sha256']:
+            if size != entry['size'] or digest != entry['sha256']:
                 raise SnapshotError('Snapshot content digest mismatch')
             if target:
                 target.chmod(0o600 | entry['executable'])
@@ -282,19 +288,13 @@ def capture(catalog, platform, selection, roots, output, dry=False):
                     if signature(os.fstat(source.fileno())) != observed:
                         raise SnapshotError(f'Configuration changed during capture: {path}')
                     sink = archive.open(member_name(entry), 'w', force_zip64=True) if archive else None
-                    digest = hashlib.sha256()
                     try:
-                        while chunk := source.read(1024 * 1024):
-                            entry['size'] += len(chunk)
-                            digest.update(chunk)
-                            if sink:
-                                sink.write(chunk)
+                        entry['size'], entry['sha256'] = _hash_payload(source, sink)
                     finally:
                         if sink:
                             sink.close()
                     if signature(os.fstat(source.fileno())) != observed:
                         raise SnapshotError(f'Configuration changed during capture: {path}')
-                entry['sha256'] = digest.hexdigest()
                 entry['executable'] = observed[2] & 0o111
             entries.append(entry)
         if _inventory(configs, _targets(configs, roots)) != before:

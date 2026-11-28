@@ -1,4 +1,5 @@
 from contextlib import redirect_stderr, redirect_stdout
+import hashlib
 import io
 import json
 import os
@@ -666,6 +667,37 @@ class ViewerTest(Fixture):
             (self.config / 'demo/settings').write_text('changed')
             with self.assertRaises(api.ConflictError):
                 session.apply(expected_version=preview['version'])
+
+    def test_payload_boundaries(self):
+        base = self.config / 'demo'
+        for size in (0, 2**20, 2**20 + 1):
+            (base / str(size)).write_bytes(b'x' * size)
+        dry = api.export_snapshot(self.archive, catalog=self.catalog, software=['demo'],
+                                  platform=self.platform, roots=self.roots, dry=True)
+        snapshot = self.capture()
+        staged = self.root / 'unpacked'
+        self.assertEqual(snapshot.entries, dry.entries)
+        for destination in (None, staged):
+            self.assertEqual(api.verify_archive(self.archive, destination), snapshot)
+        for entry in snapshot.entries:
+            if entry['path'].isdigit():
+                data = (base / entry['path']).read_bytes()
+                self.assertEqual((entry['size'], entry['sha256']), (len(data), hashlib.sha256(data).hexdigest()))
+                self.assertEqual((staged / 'payload/demo/settings/root' / entry['path']).read_bytes(), data)
+
+    def test_export_stream_write_failure(self):
+        original = zipfile.ZipFile.open
+        def broken_open(archive, name, mode='r', **kwargs):
+            stream = original(archive, name, mode, **kwargs)
+            if mode == 'w':
+                def fail(data):
+                    raise OSError('payload write failed')
+                stream.write = fail
+            return stream
+        with patch.object(zipfile.ZipFile, 'open', broken_open), self.assertRaisesRegex(OSError, 'payload write failed'):
+            self.capture()
+        self.assertFalse(self.archive.exists())
+        self.assertEqual(list(self.root.glob('.dotfiles-snapshot-*')), [])
 
     def test_archive_pinned(self):
         self.capture()
