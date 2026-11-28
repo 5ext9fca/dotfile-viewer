@@ -5,6 +5,10 @@ class CoreError(Exception):
     """A diagnosed failure suitable for display without a traceback."""
 
 
+class SnapshotError(CoreError):
+    pass
+
+
 class RuntimeRequirementError(CoreError):
     pass
 

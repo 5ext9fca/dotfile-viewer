@@ -5,12 +5,12 @@ No API in this package installs software or executes declaration contents.
 """
 from .catalog import catalog_root, load_catalog, selection
 from .software import installation, installation_roots, select, write_catalog, profile_selection
-from .snapshot import Platform, Snapshot, SnapshotError, capture, verify_archive
+from .snapshot import Platform, Snapshot, capture, verify_archive
 from .application import SnapshotSession
 from .editor import Editor
 from .lease import deployment_lease
 from .host import host, host_roots
-from .errors import CoreError
+from .errors import CoreError, SnapshotError
 from .files import ConflictError, ConfirmationRequired
 
 API_VERSION = 1

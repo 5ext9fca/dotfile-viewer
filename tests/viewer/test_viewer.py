@@ -203,6 +203,29 @@ class ViewerTest(Fixture):
             with self.assertRaises(api.CoreError):
                 self.editor.read('demo', 'settings', name)
 
+    def test_excluded_subtree_across_editor_and_snapshot(self):
+        declaration = self.catalog / 'software/items/demo.toml'
+        declaration.write_text(declaration.read_text().replace('["ignored"]', '["ignored", "cache"]'))
+        for dirname in ('cache', 'cache-old'):
+            path = self.config / 'demo' / dirname
+            path.mkdir()
+            (path / 'item').write_text('content')
+
+        expected = {'', 'empty', 'settings', 'cache-old', 'cache-old/item'}
+        self.assertEqual({row['file'] for row in self.editor.files('demo', 'settings')}, expected)
+        self.assertEqual(self.editor.read('demo', 'settings', 'cache-old/item')['content'], 'content')
+        snapshot = self.capture()
+        self.assertEqual({entry['path'] for entry in snapshot.entries}, expected)
+        for path in ('cache', 'cache/item'):
+            with self.subTest(path=path):
+                with self.assertRaisesRegex(api.CoreError, 'excluded'):
+                    self.editor.read('demo', 'settings', path)
+                entry = next(e for e in snapshot.entries if e['path'] == path.replace('cache', 'cache-old'))
+                manifest = snapshot.document()
+                manifest['entries'].append(dict(entry, path=path))
+                with self.assertRaisesRegex(api.SnapshotError, 'Excluded content'):
+                    api.Snapshot.parse(manifest)
+
     def test_links_rejected(self):
         (self.config / 'demo/link').symlink_to(self.root)
         with self.assertRaises(api.CoreError):

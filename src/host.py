@@ -2,7 +2,8 @@ from pathlib import Path
 import os
 import platform as host_platform
 import shutil
-from .snapshot import Platform, SnapshotError
+from .errors import SnapshotError
+from .snapshot import Platform
 
 def host():
     system = host_platform.system()

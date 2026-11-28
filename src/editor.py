@@ -8,7 +8,7 @@ from .errors import CoreError
 from .files import observe, new_session, publish_file, protected_state, state_home, ConflictError
 from .host import host, host_roots
 from .lease import deployment_lease
-from .snapshot import no_links
+from .paths import is_excluded, no_links
 from .software import relative
 
 MAX_TEXT = 2 * 1024 * 1024
@@ -64,7 +64,7 @@ class Editor:
     def _target(self, item, file):
         if file and not relative(file):
             raise CoreError('Invalid relative filename')
-        if any(file == p or file.startswith(p + '/') for p in item.get('exclude', [])):
+        if is_excluded(file, item.get('exclude', [])):
             raise CoreError('File excluded by declaration')
         root = self._root(item)
         base = root / item['path']
@@ -86,7 +86,7 @@ class Editor:
         base, item = self.locate(software, config)
         result = []
         def visit(path, rel):
-            if any(rel == p or rel.startswith(p + '/') for p in item.get('exclude', [])):
+            if is_excluded(rel, item.get('exclude', [])):
                 return
             try:
                 no_links(path, base.parent)

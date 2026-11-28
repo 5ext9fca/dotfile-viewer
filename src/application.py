@@ -5,11 +5,12 @@ import json
 import os
 import shutil
 import tempfile
-from .errors import CoreError
+from .errors import CoreError, SnapshotError
 from .files import observe, publish_file, new_session, state_home, protected_state, atomic_json, ConflictError
 from .host import host, host_roots
 from .lease import deployment_lease
-from .snapshot import verify_archive, targets, member_name, no_links, SnapshotError
+from .paths import no_links
+from .snapshot import verify_archive, targets, member_name
 
 
 class SnapshotSession:

@@ -8,7 +8,7 @@ import stat
 import tempfile
 import uuid
 from .errors import CoreError
-from .snapshot import no_links, signature
+from .paths import no_links, signature
 
 
 class ConflictError(CoreError):

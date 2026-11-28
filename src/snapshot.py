@@ -15,12 +15,9 @@ import stat
 import tempfile
 import zipfile
 
-from dotfile_viewer.errors import CoreError
+from dotfile_viewer.errors import SnapshotError
+from dotfile_viewer.paths import is_excluded, no_links, signature
 from dotfile_viewer.software import validate, select, installation, relative, PLATFORMS
-
-
-class SnapshotError(CoreError):
-    pass
 
 
 @dataclass(frozen=True)
@@ -90,7 +87,7 @@ class Snapshot:
             if key not in configs or not isinstance(entry['path'], str) or (entry['path'] and not relative(entry['path'])):
                 raise SnapshotError('Invalid snapshot entry path')
             config = configs[key]
-            if any(entry['path'] == p or entry['path'].startswith(p + '/') for p in config.get('exclude', [])):
+            if is_excluded(entry['path'], config.get('exclude', [])):
                 raise SnapshotError('Excluded content in snapshot')
             member = member_name(entry)
             folded = member.casefold()
@@ -125,21 +122,6 @@ def member_name(entry):
     return f"payload/{entry['software']}/{entry['config']}/root" + ('/' + entry['path'] if entry['path'] else '')
 
 
-def no_links(path, stop=None):
-    """Reject symlinks/reparse points in the selected tree, including ancestors."""
-    current = path
-    while True:
-        try:
-            info = current.lstat()
-        except FileNotFoundError:
-            info = None
-        if info and (stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400):
-            raise SnapshotError(f'Links/reparse points are not supported: {current}')
-        if current == stop or current.parent == current:
-            return
-        current = current.parent
-
-
 def targets(catalog, roots):
     result = {}
     for key, config in configurations(catalog).items():
@@ -159,17 +141,13 @@ def targets(catalog, roots):
     return result
 
 
-def signature(info):
-    return (info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
-
-
 def inventory(catalog, roots):
     locations = targets(catalog, roots)
     result = {}
     for key, path in locations.items():
         exclusions = configurations(catalog)[key].get('exclude', [])
         def visit(current, relative_path):
-            if any(relative_path == p or relative_path.startswith(p + '/') for p in exclusions):
+            if is_excluded(relative_path, exclusions):
                 return
             no_links(current, path.parent)
             info = current.lstat()  # Missing required paths abort the whole capture.
