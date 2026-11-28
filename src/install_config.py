@@ -216,8 +216,16 @@ def parse_file(path: Path, schema: InstallSchema) -> dict[str, dict[str, str]]:
 
 
 def sort_items(items: dict[str, dict[str, str]]) -> list[dict[str, str]]:
-    def environments(item: dict[str, str]) -> set[str]:
-        return set(words(item['environments'])) | ({'wsl'} if item.get('wsl_provider') else set())
+    environments_by_name = {}
+    def environments(name: str) -> set[str]:
+        if name not in environments_by_name:
+            item = items[name]
+            allowed = set(words(item['environments']))
+            if item.get('wsl_provider'):
+                allowed.add('wsl')
+            environments_by_name[name] = allowed
+        return environments_by_name[name]
+
     dependents = {name: [] for name in items}
     remaining = {}
     for name, entry in items.items():
@@ -226,7 +234,7 @@ def sort_items(items: dict[str, dict[str, str]]) -> list[dict[str, str]]:
         for dependency in dependencies:
             if dependency not in items:
                 raise DeclarationError(f'Missing dependency {dependency} for {name}')
-            if not environments(entry) <= environments(items[dependency]):
+            if not environments(name) <= environments(dependency):
                 raise DeclarationError('Dependency unavailable in selected environment')
             dependents[dependency].append(name)
 

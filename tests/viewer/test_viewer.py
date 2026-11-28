@@ -63,6 +63,18 @@ class ViewerTest(Fixture):
             with self.assertRaisesRegex(DeclarationError, 'Duplicate dependency'):
                 schema.dependencies(*fields)
 
+    def test_sort_parses_environments_once_per_connected_node(self):
+        from dotfile_viewer import install_config
+        graph = {f'b{i}': dict(id=f'b{i}', order='1', environments='native wsl') for i in range(128)}
+        dependencies = ' '.join(graph)
+        graph.update({f'a{i}': dict(id=f'a{i}', order='2', depends_on=dependencies, environments='native')
+                      for i in range(128)})
+        graph['isolated'] = dict(id='isolated', order='0', environments='native')
+        with patch.object(install_config, 'words', wraps=install_config.words) as split:
+            rows = sort_items(graph)
+        self.assertEqual(sum(call.args[0] in ('native', 'native wsl') for call in split.call_args_list), 256)
+        self.assertEqual([r['id'] for r in rows], sorted(graph, key=lambda k: (graph[k]['order'], k)))
+
     def test_dependency_sort_order(self):
         graph = {
             name: dict(id=name, order=order, depends_on=deps, environments='native')
