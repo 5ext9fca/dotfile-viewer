@@ -29,6 +29,18 @@ class CliTest(Fixture):
             self.assertFalse(current['editable'])
             self.assertEqual(current['reason'], 'Not UTF-8' if data == b'\xff' else 'Binary or mixed newline content')
 
+    def test_cli_readonly_handlers(self):
+        with patch.object(api, 'Editor', return_value=self.editor):
+            for args, expected in [(['list'], self.editor.configurations()),
+                                   (['files', 'demo', 'settings'], self.editor.files('demo', 'settings'))]:
+                with redirect_stdout(io.StringIO()) as output:
+                    self.assertEqual(cli.main(args), 0)
+                self.assertEqual(json.loads(output.getvalue()), expected)
+        snapshot = self.capture()
+        with redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(cli.main(['snapshot', 'inspect', '--snapshot', str(self.archive)]), 0)
+        self.assertEqual(json.loads(output.getvalue()), snapshot.document())
+
     def test_cli_export_output(self):
         args = ['--catalog', str(self.catalog), 'snapshot', 'export', '--software', 'demo']
         with patch.object(api, 'host', return_value=self.platform), patch.object(api, 'host_roots', return_value=self.roots):

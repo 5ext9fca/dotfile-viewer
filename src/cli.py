@@ -21,8 +21,9 @@ def parser():
     p = argparse.ArgumentParser(prog='dotfile-viewer')
     p.add_argument('--catalog', type=Path, help='Catalog root containing software/items and workflow/profiles')
     sub = p.add_subparsers(dest='command', required=True)
-    for name in ('list', 'files', 'show', 'edit', 'write'):
+    for name, handler in [('list', _list), ('files', _files), ('show', _show), ('edit', _edit), ('write', _write)]:
         s = sub.add_parser(name)
+        s.set_defaults(handler=handler)
         s.add_argument('--json', action='store_true')
         if name != 'list':
             s.add_argument('software'); s.add_argument('config')
@@ -35,13 +36,15 @@ def parser():
             s.add_argument('--expected-version', required=True)
     snap = sub.add_parser('snapshot').add_subparsers(dest='action', required=True)
     export = snap.add_parser('export')
+    export.set_defaults(handler=_export)
     choices = export.add_mutually_exclusive_group(required=True)
     choices.add_argument('--profile'); choices.add_argument('--software', nargs='+')
     export.add_argument('--output', type=Path, required=True)
     export.add_argument('--dry-run', action='store_true')
     export.add_argument('--json', action='store_true', help='Print the snapshot manifest to stdout')
-    for name in ('inspect', 'apply'):
+    for name, handler in [('inspect', _inspect), ('apply', _apply)]:
         cmd = snap.add_parser(name)
+        cmd.set_defaults(handler=handler)
         cmd.add_argument('--snapshot', required=True, type=Path)
         cmd.add_argument('--json', action='store_true')
         if name == 'apply':
@@ -53,35 +56,54 @@ def parser():
 
 
 def run(args):
-    if args.command == 'snapshot':
-        if args.action == 'export':
-            snapshot = api.export_snapshot(args.output, catalog=args.catalog, profile=args.profile,
-                                           software=args.software, dry=args.dry_run)
-            return snapshot.document() if args.json else None
-        if args.action == 'inspect':
-            return api.verify_archive(args.snapshot).document()
-        return api.apply_snapshot(args.snapshot, dry=args.dry_run, detach=args.detach_hardlink,
-                                  expected_version=args.expected_version)
-    editor = api.Editor(args.catalog)
-    if args.command == 'list':
-        return editor.configurations()
-    if args.command == 'files':
-        return editor.files(args.software, args.config)
-    if args.command == 'write':
-        raw = sys.stdin.buffer.read() if args.source == '-' else Path(args.source).read_bytes()
-        content = raw.decode('utf-8-sig')
-        return editor.save(args.software, args.config, args.file, content, args.expected_version, detach=args.detach_hardlink)
-    current = editor.read(args.software, args.config, args.file)
-    if args.command == 'show':
-        if args.json:
-            return current
-        if not current['editable']:
-            raise api.CoreError(current['reason'])
-        # Reuse verified content rather than reopening a possibly changed file.
-        text = current['content'].replace('\n', '\r\n' if current['newline'] == 'crlf' else '\n')
-        sys.stdout.buffer.write((b'\xef\xbb\xbf' if current['bom'] else b'') + text.encode('utf-8'))
-        return None
+    return args.handler(args)
 
+
+def _export(args):
+    snapshot = api.export_snapshot(args.output, catalog=args.catalog, profile=args.profile,
+                                   software=args.software, dry=args.dry_run)
+    return snapshot.document() if args.json else None
+
+
+def _inspect(args):
+    return api.verify_archive(args.snapshot).document()
+
+
+def _apply(args):
+    return api.apply_snapshot(args.snapshot, dry=args.dry_run, detach=args.detach_hardlink,
+                              expected_version=args.expected_version)
+
+
+def _list(args):
+    return api.Editor(args.catalog).configurations()
+
+
+def _files(args):
+    return api.Editor(args.catalog).files(args.software, args.config)
+
+
+def _write(args):
+    editor = api.Editor(args.catalog)
+    raw = sys.stdin.buffer.read() if args.source == '-' else Path(args.source).read_bytes()
+    content = raw.decode('utf-8-sig')
+    return editor.save(args.software, args.config, args.file, content, args.expected_version, detach=args.detach_hardlink)
+
+
+def _show(args):
+    current = api.Editor(args.catalog).read(args.software, args.config, args.file)
+    if args.json:
+        return current
+    if not current['editable']:
+        raise api.CoreError(current['reason'])
+    # Reuse verified content rather than reopening a possibly changed file.
+    text = current['content'].replace('\n', '\r\n' if current['newline'] == 'crlf' else '\n')
+    sys.stdout.buffer.write((b'\xef\xbb\xbf' if current['bom'] else b'') + text.encode('utf-8'))
+    return None
+
+
+def _edit(args):
+    editor = api.Editor(args.catalog)
+    current = editor.read(args.software, args.config, args.file)
     if not current['editable']:
         raise api.CoreError(current['reason'])
     command = os.environ.get('VISUAL') or os.environ.get('EDITOR')
