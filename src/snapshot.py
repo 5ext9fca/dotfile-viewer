@@ -82,6 +82,7 @@ class Snapshot:
         if not isinstance(entries, list):
             raise SnapshotError('Invalid snapshot entries')
         configs = configurations(catalog)
+        exclusions = {key: set(config.get('exclude', ())) for key, config in configs.items()}
         seen, roots, directories = set(), set(), set()
         for entry in entries:
             if not isinstance(entry, dict) or set(entry) != {'software', 'config', 'path', 'kind', 'size', 'sha256', 'executable'}:
@@ -89,8 +90,7 @@ class Snapshot:
             key = (entry['software'], entry['config'])
             if key not in configs or not isinstance(entry['path'], str) or (entry['path'] and not relative(entry['path'])):
                 raise SnapshotError('Invalid snapshot entry path')
-            config = configs[key]
-            if is_excluded(entry['path'], config.get('exclude', [])):
+            if is_excluded(entry['path'], exclusions[key]):
                 raise SnapshotError('Excluded content in snapshot')
             member = member_name(entry)
             folded = member.casefold()
@@ -157,7 +157,7 @@ def _targets(configs, roots):
 
 def _inventory(configs, locations):
     for key, path in locations.items():
-        exclusions = configs[key].get('exclude', [])
+        exclusions = set(configs[key].get('exclude', ()))
         def visit(current, relative_path):
             if is_excluded(relative_path, exclusions):
                 return

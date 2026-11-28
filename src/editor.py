@@ -87,8 +87,9 @@ class Editor:
     def files(self, software, config):
         base, item = self.locate(software, config)
         result = []
+        exclusions = set(item.get('exclude', ()))
         def visit(path, rel):
-            if is_excluded(rel, item.get('exclude', [])):
+            if is_excluded(rel, exclusions):
                 return
             try:
                 info = no_links(path, base.parent)

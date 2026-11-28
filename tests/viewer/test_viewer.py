@@ -360,6 +360,16 @@ class ViewerTest(Fixture):
         self.save('changed', detach=True)
         self.assertEqual(other.read_bytes(), b'hello\r\n')
 
+    def test_exclusions_are_scoped_and_case_sensitive(self):
+        from dotfile_viewer.snapshot import _inventory
+        (self.config / 'demo/cache').mkdir()
+        (self.config / 'demo/cache/leaf').touch()
+        configs = {('demo', 'a'): {'exclude': ['cache']}, ('demo', 'b'): {'exclude': ['Cache']}}
+        locations = dict.fromkeys(configs, self.config / 'demo')
+        entries = dict(_inventory(configs, locations))
+        self.assertNotIn(('demo', 'a', 'cache/leaf'), entries)
+        self.assertIn(('demo', 'b', 'cache/leaf'), entries)
+
     def test_exclusion_and_traversal(self):
         for name in ('ignored', '../outside', '/absolute'):
             with self.assertRaises(api.CoreError):

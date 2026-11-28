@@ -4,7 +4,13 @@ from .errors import SnapshotError
 
 
 def is_excluded(relative_path, exclusions):
-    return any(relative_path == path or relative_path.startswith(path + '/') for path in exclusions)
+    if not exclusions:
+        return False
+    while relative_path:
+        if relative_path in exclusions:
+            return True
+        relative_path = relative_path.rpartition('/')[0]
+    return False
 
 
 def no_links(path, stop=None):
