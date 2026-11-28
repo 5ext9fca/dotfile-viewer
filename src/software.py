@@ -79,7 +79,7 @@ def read_catalog(directory=ROOT / 'software/items'):
         raise DeclarationError('No software declarations found')
     # Validate all platform dependency graphs, including configuration-only items.
     for platform in PLATFORMS:
-        _select(catalog, platform, 'native', ['all'], schema, filter_environment=False)
+        _selection_ids(catalog, platform, 'native', ['all'], schema, filter_environment=False)
         _installation(catalog, platform, schema)
     return catalog
 
@@ -104,12 +104,24 @@ def available(data, platform):
 
 
 def select(catalog, platform, environment, names, *, filter_environment=True):
-    if platform not in PLATFORMS or environment not in ('native', 'wsl'):
-        raise DeclarationError('Unsupported platform/environment')
     return _select(catalog, platform, environment, names, InstallSchema(), filter_environment=filter_environment)
 
 
 def _select(catalog, platform, environment, names, schema, *, filter_environment=True):
+    result = {}
+    for identity in _selection_ids(catalog, platform, environment, names, schema, filter_environment=filter_environment):
+        data = catalog[identity]
+        installs = data.get('install', {})
+        result[identity] = dict(schema_version=1,
+            install={k: dict(v) for k, v in installs.items() if k == platform or k.startswith(platform + '/')},
+            config=[dict(deepcopy(c), platforms=[platform]) for c in data.get('config', []) if platform in c['platforms'] and (not filter_environment or environment in c.get('environments', ['native', 'wsl']))],
+            requires={platform: list(data.get('requires', {}).get(platform, []))})
+    return result
+
+
+def _selection_ids(catalog, platform, environment, names, schema, *, filter_environment=True):
+    if platform not in PLATFORMS or environment not in ('native', 'wsl'):
+        raise DeclarationError('Unsupported platform/environment')
     candidates = {i: d for i, d in catalog.items() if available(d, platform)}
     def eligible(data):
         if platform not in data.get('install', {}):
@@ -123,10 +135,10 @@ def _select(catalog, platform, environment, names, schema, *, filter_environment
             eligible_ids = {i for i, data in candidates.items() if eligible(data)}
         roots = sorted(candidates if eligible_ids is None else eligible_ids)
     if not roots and names == ['all']:
-        return {}
+        return []
     if not roots or len(roots) != len(set(roots)):
         raise DeclarationError('Select at least one unique software ID')
-    done, visiting, result = set(), set(), {}
+    done, visiting, result = set(), set(), []
     def visit(identity):
         if identity in done:
             return
@@ -151,10 +163,7 @@ def _select(catalog, platform, environment, names, schema, *, filter_environment
             visit(dependency)
         visiting.remove(identity)
         done.add(identity)
-        result[identity] = dict(schema_version=1,
-            install={k: dict(v) for k, v in installs.items() if k == platform or k.startswith(platform + '/')},
-            config=[dict(deepcopy(c), platforms=[platform]) for c in data.get('config', []) if platform in c['platforms'] and (not filter_environment or environment in c.get('environments', ['native', 'wsl']))],
-            requires={platform: list(data.get('requires', {}).get(platform, []))})
+        result.append(identity)
     for identity in roots:
         visit(identity)
     return result
@@ -200,7 +209,7 @@ def write_catalog(catalog, directory):
 def installation_roots(catalog, platform, environment, names):
     """Map configuration-only roots to install roots without eagerly requesting
     installation-only dependencies of an already present application."""
-    chosen = select(catalog, platform, environment, names)
+    chosen = _selection_ids(catalog, platform, environment, names, InstallSchema())
     visited = set()
     result = []
 
@@ -208,7 +217,7 @@ def installation_roots(catalog, platform, environment, names):
         if identity in visited:
             return
         visited.add(identity)
-        data = chosen[identity]
+        data = catalog[identity]
         if platform in data.get('install', {}):
             result.append(identity)
         else:

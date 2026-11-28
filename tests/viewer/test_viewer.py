@@ -108,6 +108,16 @@ class ViewerTest(Fixture):
         self.assertEqual(list(api.select(catalog, platform, 'wsl', ['all'], filter_environment=False)),
                          ['runtime', 'cfg'])
 
+    def test_selection_copies_only_returned_declarations(self):
+        with patch('dotfile_viewer.software.deepcopy', side_effect=AssertionError):
+            catalog = api.load_catalog(self.catalog)
+            self.assertEqual(api.installation_roots(catalog, 'macos', 'native', ['demo']), [])
+        chosen = api.select(catalog, 'macos', 'native', ['demo'])
+        chosen['demo']['config'][0]['exclude'].clear()
+        self.assertEqual(catalog['demo']['config'][0]['exclude'], ['ignored'])
+        with self.assertRaises(DeclarationError):
+            api.installation_roots(catalog, 'unknown', 'native', ['demo'])
+
     def test_catalog_and_profiles(self):
         self.assertEqual(api.selection(self.catalog, profile='test'), ['demo'])
         self.assertIn('fish', api.load_catalog())
