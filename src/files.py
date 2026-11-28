@@ -130,7 +130,7 @@ def _recover_output(target, backup, record, staged_stat, published):
 
 def publish_file(target, source, expected, session, *, detach=False, executable=None, preserve_permissions=True):
     """Caller holds the deployment lease. Never overwrite a changed target."""
-    target, source, session = Path(target), Path(source), Path(session)
+    target, session = Path(target), Path(session)
     before = observe(target)
     if before['version'] != expected:
         raise ConflictError(f'File changed: {target}')
@@ -153,7 +153,10 @@ def publish_file(target, source, expected, session, *, detach=False, executable=
     replaced = False
     published = None
     try:
-        shutil.copyfile(source, temp)
+        if isinstance(source, bytes):
+            Path(temp).write_bytes(source)
+        else:
+            shutil.copyfile(source, temp)
         if backup:
             shutil.copystat(backup, temp)
         if not backup or not preserve_permissions:

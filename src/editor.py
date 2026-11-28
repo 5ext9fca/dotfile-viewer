@@ -2,7 +2,6 @@
 from pathlib import Path
 import os
 import stat
-import tempfile
 from .catalog import load_catalog, catalog_root
 from .errors import CoreError
 from .files import _read_observed, new_session, publish_file, protected_state, state_home, ConflictError
@@ -158,7 +157,4 @@ class Editor:
                        for data in catalog.values() for c in self._configs(data) if self.roots.get(c['root']))
             protected_state(self.backup, managed)
             session = new_session(self.backup)
-            with tempfile.TemporaryDirectory(prefix='viewer-edit-') as tmp:
-                source = Path(tmp) / 'content'
-                source.write_bytes(data)
-                return publish_file(path, source, expected_version, session, detach=detach)
+            return publish_file(path, data, expected_version, session, detach=detach)

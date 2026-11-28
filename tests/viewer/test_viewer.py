@@ -904,6 +904,24 @@ class ViewerTest(Fixture):
                     with self.assertRaisesRegex(api.SnapshotError, 'digest mismatch'):
                         api.apply_snapshot(archive, dry=True, platform=self.platform, roots=self.roots)
 
+    def test_edit_writes_candidate_directly_to_staging(self):
+        target = self.config / 'demo/settings'
+        for content in ('x' * (2 * 1024 * 1024), ''):
+            old = target.read_bytes()
+            with patch.object(Path, 'write_bytes', autospec=True, side_effect=Path.write_bytes) as write:
+                saved = self.save(content)
+            write.assert_called_once()
+            path, data = write.call_args.args
+            self.assertEqual(path.parent, target.parent)
+            self.assertTrue(path.name.startswith('.dotfile-viewer-'))
+            self.assertEqual(data, content.encode())
+            self.assertEqual(target.read_bytes(), data)
+            self.assertEqual(Path(saved['backup']).read_bytes(), old)
+        with patch.object(Path, 'write_bytes', side_effect=OSError('stage failed')), self.assertRaises(OSError):
+            self.save('new')
+        self.assertEqual(target.read_bytes(), b'')
+        self.assertEqual(list(target.parent.glob('.dotfile-viewer-*')), [])
+
     def test_backup_failure_leaves_original(self):
         before = (self.config / 'demo/settings').read_bytes()
         with patch('dotfile_viewer.files.shutil.copy2', side_effect=OSError('backup failed')):
