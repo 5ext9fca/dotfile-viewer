@@ -5,7 +5,7 @@ import stat
 import tempfile
 from .catalog import load_catalog, catalog_root
 from .errors import CoreError
-from .files import observe, new_session, publish_file, protected_state, state_home, ConflictError
+from .files import _read_observed, new_session, publish_file, protected_state, state_home, ConflictError
 from .host import host, host_roots
 from .lease import deployment_lease
 from .paths import is_excluded, no_links
@@ -113,13 +113,10 @@ class Editor:
 
     @staticmethod
     def _read_file(path):
-        before = observe(path)
+        before, data = _read_observed(path, MAX_TEXT)
         result = dict(before, path=str(path), editable=False)
-        if before['kind'] != 'file' or before['size'] > MAX_TEXT:
+        if data is None:
             return dict(result, reason='Not a text file or exceeds 2 MiB')
-        data = path.read_bytes()
-        if observe(path)['version'] != before['version']:
-            raise ConflictError('File changed during read')
         try:
             text = data.decode('utf-8-sig')
         except UnicodeError:

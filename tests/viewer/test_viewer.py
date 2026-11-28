@@ -262,6 +262,49 @@ class ViewerTest(Fixture):
             self.capture()
         self.assertIn('unavailable', [x['kind'] for x in self.editor.files('demo', 'settings')])
 
+    def test_editor_reads_target_once(self):
+        target = self.config / 'demo/settings'
+        limit = 2 * 1024 * 1024
+        for data in (b'', b'\xef\xbb\xbfhello\r\n', b'x' * limit, b'x' * (limit + 1)):
+            with self.subTest(size=len(data)):
+                target.write_bytes(data)
+                expected = observe(target)
+                with patch.object(Path, 'open', autospec=True, side_effect=Path.open) as opened:
+                    result = self.read()
+                self.assertEqual(sum(call.args[0] == target for call in opened.call_args_list), 1)
+                self.assertEqual(result['version'], expected['version'])
+                self.assertEqual(result['editable'], len(data) <= limit)
+                if result['editable']:
+                    self.assertEqual(result['content'], data.decode('utf-8-sig').replace('\r\n', '\n'))
+                    self.assertEqual(result['bom'], data.startswith(b'\xef\xbb\xbf'))
+                    self.assertEqual(result['newline'], 'crlf' if b'\r\n' in data else 'lf')
+
+    def test_editor_rechecks_file_after_read(self):
+        target = self.config / 'demo/settings'
+        original_stat = Path.stat
+        for replace in (False, True):
+            for save in (False, True):
+                with self.subTest(replace=replace, save=save):
+                    target.write_bytes(b'original')
+                    version = self.read()['version']
+                    def change_before_final_check(path, *, follow_symlinks=True):
+                        if path == target and follow_symlinks:
+                            if replace:
+                                other = self.root / 'replacement'
+                                other.write_bytes(b'external')
+                                os.replace(other, target)
+                            else:
+                                target.write_bytes(b'external edit')
+                        return original_stat(path, follow_symlinks=follow_symlinks)
+
+                    with patch.object(Path, 'stat', change_before_final_check), self.assertRaises(api.ConflictError):
+                        if save:
+                            self.save('mine', version)
+                        else:
+                            self.read()
+                    self.assertEqual(target.read_bytes(), b'external' if replace else b'external edit')
+                    self.assertFalse(self.editor.backup.exists())
+
     def test_binary_and_large_text(self):
         p = self.config / 'demo/settings'
         p.write_bytes(b'\x00binary')

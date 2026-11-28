@@ -26,29 +26,42 @@ def state_home():
 
 
 def observe(path):
+    observation, _ = _read_observed(path)
+    return observation
+
+
+def _read_observed(path, content_limit=None):
+    """Return the observation and optionally the bounded content used for its digest."""
     path = Path(path)
     no_links(path)
     try:
         info = path.lstat()
     except FileNotFoundError:
-        return {'kind': 'missing', 'version': 'missing'}
+        return {'kind': 'missing', 'version': 'missing'}, None
     if stat.S_ISDIR(info.st_mode):
-        return {'kind': 'directory', 'version': hashlib.sha256(repr(signature(info)).encode()).hexdigest()}
+        return {'kind': 'directory', 'version': hashlib.sha256(repr(signature(info)).encode()).hexdigest()}, None
     if not stat.S_ISREG(info.st_mode):
         raise CoreError(f'Unsupported file type: {path}')
+    content = bytearray() if content_limit is not None and info.st_size <= content_limit else None
     digest = hashlib.sha256()
     with path.open('rb') as source:
         if signature(os.fstat(source.fileno())) != signature(info):
             raise ConflictError(f'File changed: {path}')
         while chunk := source.read(1024 * 1024):
             digest.update(chunk)
+            if content is not None:
+                if len(content) + len(chunk) > content_limit:
+                    raise ConflictError(f'File changed: {path}')
+                content.extend(chunk)
         if signature(os.fstat(source.fileno())) != signature(info):
             raise ConflictError(f'File changed: {path}')
+    if content_limit is not None:
+        no_links(path)
     if signature(path.stat()) != signature(info):
         raise ConflictError(f'File changed: {path}')
     sha = digest.hexdigest()
     return dict(kind='file', version=hashlib.sha256((repr(signature(info)) + sha).encode()).hexdigest(),
-                identity=[info.st_dev, info.st_ino], sha256=sha, size=info.st_size, executable=info.st_mode & 0o111, links=info.st_nlink)
+                identity=[info.st_dev, info.st_ino], sha256=sha, size=info.st_size, executable=info.st_mode & 0o111, links=info.st_nlink), content
 
 
 def atomic_json(path, value):
