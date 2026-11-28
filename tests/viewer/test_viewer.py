@@ -58,7 +58,8 @@ class ViewerTest(Fixture):
             selected = api.selection(profile=name)
             self.assertIn('zsh', selected)
             self.assertTrue({'eza', 'fzf', 'starship', 'atuin', 'zoxide'} <= set(selected))
-            self.assertNotIn('fish', selected)
+            self.assertTrue({'fish', 'less', 'mise', 'opencode', 'openjdk', 'ruby', 'dotnet', 'texlive'} <= set(selected))
+            self.assertEqual('jetbrains-toolbox' in selected, name != 'wsl')
             self.assertEqual('antidote' in selected, name == 'macos')
             self.assertEqual(api.selection(profile=name + '-full'), ['all'])
 
@@ -86,6 +87,35 @@ class ViewerTest(Fixture):
         for relative in private:
             self.assertFalse((destination / relative).exists())
 
+    def test_linux_shell_and_toolbox_capture(self):
+        platform = api.Platform('linux.dnf', 'x86_64', 'native')
+        source = self.root / 'home'
+        config = source / '.config'
+        toolbox = '.local/share/JetBrains/Toolbox/'
+        tracked = ['.zshenv', '.zprofile', '.zshrc', '.zsh_plugins.txt',
+                   '.config/zsh/regenerate.zsh', '.config/zsh-abbr/user-abbreviations',
+                   '.config/starship.toml', '.config/atuin/config.toml', '.config/fish/config.fish',
+                   toolbox + '.settings.json']
+        skipped = ['.zsh_history', '.zsh_plugins.zsh', '.config/atuin/key',
+                   '.config/fish/fish_variables', '.config/opencode/service.json',
+                   toolbox + 'accounts.json', toolbox + 'apps/example']
+        for name in tracked + skipped:
+            path = source / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('synthetic')
+        api.export_snapshot(self.archive, software=['zsh', 'starship', 'atuin', 'fish', 'opencode', 'jetbrains-toolbox'],
+                            platform=platform, roots={'home': str(source), 'config_home': str(config)})
+        dest = self.root / 'destination'
+        with api.SnapshotSession(self.archive, platform=platform,
+                                 roots={'home': str(dest), 'config_home': str(dest / '.config')},
+                                 backup=self.root / 'backup') as session:
+            session.apply()
+        for name in tracked:
+            self.assertEqual((dest / name).read_text(), 'synthetic')
+        for name in skipped:
+            self.assertFalse((dest / name).exists())
+        self.assertNotIn('jetbrains-toolbox', api.select(api.load_catalog(), 'linux.dnf', 'wsl', ['all']))
+
     def test_linux_desktop_font_selection(self):
         catalog = api.load_catalog()
         fonts = {'sf-pro-text', 'pingfang-sc'}
@@ -100,7 +130,7 @@ class ViewerTest(Fixture):
         catalog = api.load_catalog()
         fonts = {'sf-pro-text', 'pingfang-sc'}
         self.assertEqual(set(api.selection(profile='windows-fonts')), fonts)
-        self.assertIn('eza', api.selection(profile='windows'))
+        self.assertTrue({'eza', 'openjdk', 'ruby', 'dotnet', 'jetbrains-toolbox'} <= set(api.selection(profile='windows')))
         for profile in ('windows', 'windows-full', 'windows-fonts'):
             selected = api.select(catalog, 'windows', 'native', api.selection(profile=profile))
             self.assertTrue(fonts <= selected.keys())

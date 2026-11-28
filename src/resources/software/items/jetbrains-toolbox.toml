@@ -1,0 +1,36 @@
+schema_version = 1
+
+[install."macos"]
+order = "20"
+method = "cask"
+packages = "jetbrains-toolbox"
+source_kind = "default"
+install_depends_on = "homebrew"
+
+[install."windows"]
+order = "20"
+method = "winget"
+packages = "JetBrains.Toolbox"
+source_kind = "winget"
+source_repo = "winget"
+
+[[config]]
+id = "linux-settings"
+platforms = ["linux.apt", "linux.dnf", "linux.pacman"]
+environments = ["native"]
+root = "home"
+path = ".local/share/JetBrains/Toolbox/.settings.json"
+
+[[config]]
+id = "macos-settings"
+platforms = ["macos"]
+environments = ["native"]
+root = "home"
+path = "Library/Application Support/JetBrains/Toolbox/.settings.json"
+
+[[config]]
+id = "windows-settings"
+platforms = ["windows"]
+environments = ["native"]
+root = "local_app_data"
+path = "JetBrains/Toolbox/.settings.json"

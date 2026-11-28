@@ -44,10 +44,3 @@ platforms = ["macos"]
 root = "config_home"
 path = "opencode/cli.json"
 exclude = []
-
-[[config]]
-id = "service"
-platforms = ["macos"]
-root = "config_home"
-path = "opencode/service.json"
-exclude = []

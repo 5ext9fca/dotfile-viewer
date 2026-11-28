@@ -73,4 +73,17 @@ software=fish git helix
 
 Linux、WSL、macOS 和 Windows 的普通 profile 均选择仅安装项 eza。Linux 使用发行版软件源中的 `eza`（APT 需要所用发行版版本提供该包），macOS 使用 Homebrew，Windows 使用 WinGet 的 `eza-community.eza`。
 
-macOS、Linux 和 WSL 的普通 profile 选择 Zsh、fzf、Starship、Atuin 和 zoxide。macOS 使用系统 Zsh 与 Homebrew Antidote，并采集 Zsh 启动文件、插件清单、zsh 配置目录、缩写、Starship 和 Atuin 的配置文件。历史数据库、主目录中的静态插件脚本和下载缓存不在采集范围内。Linux 和 WSL 的 APT 分支使用 Cargo 构建 Atuin 和 Starship。Unix 完整 profile 选择 all，采集时也需要 Fish 配置。
+普通 profile 的开发工具选择如下。OpenJDK 使用 JDK，.NET 使用 SDK。APT 的 .NET 声明要求已配置能提供 `dotnet-sdk-10.0` 的源，Debian 的源设置见 [Microsoft 安装说明](https://learn.microsoft.com/dotnet/core/install/linux-debian)。
+
+| 平台 | 普通 profile 的新增工具 | JetBrains Toolbox |
+|---|---|---|
+| 原生 Linux | OpenJDK、Ruby、.NET、TeX Live、Fish、mise、OpenCode、less | 采集已安装 Toolbox 的设置；Linux 官方安装方式为解包运行 |
+| WSL | 与 Linux 相同的命令行工具 | 由宿主机管理 |
+| macOS | 与 Linux 相同的命令行工具 | Homebrew cask 安装并采集设置 |
+| Windows | OpenJDK、Ruby、.NET | WinGet 安装并采集设置 |
+
+Windows 版 TeX Live 使用上游安装器，当前声明没有对应的 WinGet 安装规则。Linux 版 TeX Live 使用发行版包，所含宏包随发行版而异。[TeX Live 安装](https://tug.org/texlive/acquire.html)
+
+Unix 普通 profile 选择 Zsh、Fish、fzf、Starship、Atuin 和 zoxide。导出需要 Zsh 启动文件、插件清单、zsh 配置目录、缩写、Fish 配置目录以及 Starship 和 Atuin 配置文件。macOS 使用系统 Zsh 和 Homebrew Antidote。Linux 和 WSL 的 APT 分支使用 Cargo 构建 Atuin 和 Starship。
+
+Toolbox 桌面配置只选择各平台的 `.settings.json`，该文件可能含本机路径及账号偏好。首次启动生成设置后才能按上述 profile 导出。OpenCode 在 macOS 采集 `cli.json`；可能保存服务密码的 `service.json` 已移出内置声明。旧快照仍使用其中保存的声明。[Toolbox 设置路径](https://www.jetbrains.com/help/toolbox-app/frequently-asked-questions.html)

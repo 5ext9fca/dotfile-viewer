@@ -18,44 +18,44 @@ method = "pacman"
 packages = "zsh"
 source_kind = "default"
 
-# macOS uses /bin/zsh. Capture only the verified macOS configuration.
+# macOS uses the system Zsh.
 [[config]]
 id = "rc"
-platforms = ["macos"]
+platforms = ["linux.apt", "linux.dnf", "linux.pacman", "macos"]
 root = "home"
 path = ".zshrc"
 exclude = []
 
 [[config]]
 id = "profile"
-platforms = ["macos"]
+platforms = ["linux.apt", "linux.dnf", "linux.pacman", "macos"]
 root = "home"
 path = ".zprofile"
 exclude = []
 
 [[config]]
 id = "plugins"
-platforms = ["macos"]
+platforms = ["linux.apt", "linux.dnf", "linux.pacman", "macos"]
 root = "home"
 path = ".zsh_plugins.txt"
 exclude = []
 
 [[config]]
 id = "settings"
-platforms = ["macos"]
+platforms = ["linux.apt", "linux.dnf", "linux.pacman", "macos"]
 root = "config_home"
 path = "zsh"
 exclude = []
 
 [[config]]
 id = "abbreviations"
-platforms = ["macos"]
+platforms = ["linux.apt", "linux.dnf", "linux.pacman", "macos"]
 root = "config_home"
 path = "zsh-abbr/user-abbreviations"
 exclude = []
 
 [[config]]
 id = "env"
-platforms = ["macos"]
+platforms = ["linux.apt", "linux.dnf", "linux.pacman", "macos"]
 root = "home"
 path = ".zshenv"

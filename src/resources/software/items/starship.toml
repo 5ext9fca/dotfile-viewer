@@ -33,6 +33,6 @@ install_depends_on = "homebrew"
 
 [[config]]
 id = "settings"
-platforms = ["macos"]
+platforms = ["linux.apt", "linux.dnf", "linux.pacman", "macos"]
 root = "config_home"
 path = "starship.toml"

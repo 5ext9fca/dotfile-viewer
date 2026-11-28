@@ -1,0 +1,33 @@
+schema_version = 1
+
+[install."linux.apt"]
+order = "20"
+method = "apt"
+packages = "dotnet-sdk-10.0"
+source_kind = "default"
+
+[install."linux.dnf"]
+order = "20"
+method = "dnf"
+packages = "dotnet-sdk-10.0"
+source_kind = "default"
+
+[install."linux.pacman"]
+order = "20"
+method = "pacman"
+packages = "dotnet-sdk"
+source_kind = "default"
+
+[install."macos"]
+order = "20"
+method = "brew"
+packages = "dotnet"
+source_kind = "default"
+install_depends_on = "homebrew"
+
+[install."windows"]
+order = "20"
+method = "winget"
+packages = "Microsoft.DotNet.SDK.10"
+source_kind = "winget"
+source_repo = "winget"
