@@ -78,6 +78,22 @@ class ViewerTest(Fixture):
         with self.assertRaisesRegex(DeclarationError, 'Dependency cycle'):
             sort_items(graph)
 
+    def test_deep_selection_and_installation_roots(self):
+        items = self.catalog / 'software/items'
+        names = [f'deep-{i}' for i in range(2000)]
+        config = 'schema_version=1\n[[config]]\nid="c"\nplatforms=["linux.apt"]\nroot="home"\npath="c"\n'
+        for name, dependency in zip(names[:-1], names[1:], strict=True):
+            (items / f'{name}.toml').write_text(config + f'[requires]\n"linux.apt"=["{dependency}"]\n')
+        leaf = items / f'{names[-1]}.toml'
+        leaf.write_text('schema_version=1\n[install."linux.apt"]\nmethod="apt"\norder="1"\nsource_kind="default"\npackages="demo"\n')
+        catalog = api.load_catalog(self.catalog)
+        args = catalog, 'linux.apt', 'native', names[:1]
+        self.assertEqual(list(api.select(*args)), names[::-1])
+        self.assertEqual(api.installation_roots(*args), names[-1:])
+        leaf.write_text(config + f'[requires]\n"linux.apt"=["{names[0]}"]\n')
+        with self.assertRaisesRegex(DeclarationError, 'cycle'):
+            api.load_catalog(self.catalog)
+
     def test_shared_installation_roots(self):
         platform = 'linux.apt'
         catalog = {

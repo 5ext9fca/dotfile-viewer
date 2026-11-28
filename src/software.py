@@ -139,9 +139,16 @@ def _selection_ids(catalog, platform, environment, names, schema, *, filter_envi
     if not roots or len(roots) != len(set(roots)):
         raise DeclarationError('Select at least one unique software ID')
     done, visiting, result = set(), set(), []
-    def visit(identity):
+    pending = [(name, False) for name in reversed(roots)]
+    while pending:
+        identity, exiting = pending.pop()
+        if exiting:
+            visiting.remove(identity)
+            done.add(identity)
+            result.append(identity)
+            continue
         if identity in done:
-            return
+            continue
         if identity in visiting:
             raise DeclarationError('Software dependency cycle')
         if identity not in candidates:
@@ -159,13 +166,8 @@ def _selection_ids(catalog, platform, environment, names, schema, *, filter_envi
             for section, values in installs.items():
                 if section == platform or section.startswith(platform + '/'):
                     deps += values.get('depends_on', '').split() + values.get('install_depends_on', '').split()
-        for dependency in dict.fromkeys(deps):
-            visit(dependency)
-        visiting.remove(identity)
-        done.add(identity)
-        result.append(identity)
-    for identity in roots:
-        visit(identity)
+        pending.append((identity, True))
+        pending.extend((dep, False) for dep in reversed(dict.fromkeys(deps)))
     return result
 
 
@@ -213,16 +215,15 @@ def installation_roots(catalog, platform, environment, names):
     visited = set()
     result = []
 
-    def visit(identity):
+    pending = list(reversed(chosen if names == ['all'] else names))
+    while pending:
+        identity = pending.pop()
         if identity in visited:
-            return
+            continue
         visited.add(identity)
         data = catalog[identity]
         if platform in data.get('install', {}):
             result.append(identity)
         else:
-            for dependency in data.get('requires', {}).get(platform, []):
-                visit(dependency)
-    for identity in chosen if names == ['all'] else names:
-        visit(identity)
+            pending.extend(reversed(data.get('requires', {}).get(platform, [])))
     return result
