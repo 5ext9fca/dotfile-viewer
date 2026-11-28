@@ -14,6 +14,31 @@ from .text_codec import decode_text, encode_text, normalize_candidate
 MAX_TEXT = 2 * 1024 * 1024
 
 
+def _browse_files(base, exclusions):
+    pending = [(base, '')]
+    while pending:
+        path, rel = pending.pop()
+        if is_excluded(rel, exclusions):
+            continue
+        row = dict(file=rel, path=str(path))
+        try:
+            info = no_links(path, base.parent)
+            if info is None:
+                kind = 'missing'
+            elif stat.S_ISDIR(info.st_mode):
+                kind = 'directory'
+                for child in sorted(path.iterdir(), reverse=True):
+                    pending.append((child, f'{rel}/{child.name}' if rel else child.name))
+            elif stat.S_ISREG(info.st_mode):
+                kind = 'file'
+            else:
+                kind = 'unsupported'
+            row['kind'] = kind
+        except (CoreError, OSError) as exc:
+            row.update(kind='unavailable', error=str(exc))
+        yield row
+
+
 class Editor:
     def __init__(self, catalog=None, *, platform=None, roots=None, backup=None):
         self.catalog = catalog
@@ -86,29 +111,7 @@ class Editor:
 
     def files(self, software, config):
         base, item = self.locate(software, config)
-        result = []
-        exclusions = set(item.get('exclude', ()))
-        def visit(path, rel):
-            if is_excluded(rel, exclusions):
-                return
-            try:
-                info = no_links(path, base.parent)
-                if info is None:
-                    kind = 'missing'
-                elif stat.S_ISDIR(info.st_mode):
-                    kind = 'directory'
-                elif stat.S_ISREG(info.st_mode):
-                    kind = 'file'
-                else:
-                    kind = 'unsupported'
-                result.append(dict(file=rel, path=str(path), kind=kind))
-                if kind == 'directory':
-                    for child in sorted(path.iterdir()):
-                        visit(child, f'{rel}/{child.name}' if rel else child.name)
-            except (CoreError, OSError) as exc:
-                result.append(dict(file=rel, path=str(path), kind='unavailable', error=str(exc)))
-        visit(base, '')
-        return result
+        return list(_browse_files(base, set(item.get('exclude', ()))))
 
     def read(self, software, config, file=''):
         item = self._config(load_catalog(self.catalog), software, config)

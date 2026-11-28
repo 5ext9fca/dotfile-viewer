@@ -8,6 +8,22 @@ from viewer_fixture import Fixture
 
 
 class EditorTest(Fixture):
+    def test_deep_browsing_uses_iteration(self):
+        import sys
+        base = self.config / 'demo/empty'
+        current = base
+        for _ in range(80):
+            current = current / 'd'
+            current.mkdir()
+        limit = sys.getrecursionlimit()
+        try:
+            sys.setrecursionlimit(64)
+            rows = self.editor.files('demo', 'settings')
+        finally:
+            sys.setrecursionlimit(limit)
+        self.assertIn(dict(file=current.relative_to(base.parent).as_posix(),
+                           path=str(current), kind='directory'), rows)
+
     def test_editor_only_probes_selected_configuration(self):
         other = self.catalog / 'software/items/other.toml'
         other.write_text(other.with_name('demo.toml').read_text().replace('path="demo"', 'path="other"'))

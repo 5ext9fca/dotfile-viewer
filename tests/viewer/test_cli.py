@@ -61,6 +61,25 @@ class CliTest(Fixture):
             self.assertEqual(cli.main(['show', 'demo', 'settings', 'settings']), 0)
             self.assertEqual(raw.getvalue(), expected)
 
+    def test_files_reports_each_enumeration_failure_once(self):
+        base = self.config / 'demo'
+        iterdir = Path.iterdir
+        for blocked in (base, base / 'empty'):
+            def list_children(path):
+                if path == blocked:
+                    raise PermissionError('enumeration denied')
+                return iterdir(path)
+            with (patch.object(Path, 'iterdir', list_children),
+                  patch.object(api, 'Editor', return_value=self.editor),
+                  redirect_stdout(io.StringIO()) as output):
+                rows = self.editor.files('demo', 'settings')
+                self.assertEqual(cli.main(['files', 'demo', 'settings']), 0)
+            self.assertEqual(json.loads(output.getvalue()), rows)
+            self.assertEqual([row['file'] for row in rows], [''] if blocked == base else ['', 'empty', 'settings'])
+            failed, = [row for row in rows if row['kind'] == 'unavailable']
+            self.assertEqual(failed['path'], str(blocked))
+            self.assertIn('enumeration denied', failed['error'])
+
     def test_cli_readonly_handlers(self):
         with patch.object(api, 'Editor', return_value=self.editor):
             for args, expected in [(['list'], self.editor.configurations()),
