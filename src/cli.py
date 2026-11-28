@@ -11,6 +11,12 @@ from . import api
 from .install_config import DeclarationError
 
 
+def nonempty_version(value):
+    if not value:
+        raise argparse.ArgumentTypeError('expected a non-empty plan version')
+    return value
+
+
 def parser():
     p = argparse.ArgumentParser(prog='dotfile-viewer')
     p.add_argument('--catalog', type=Path, help='Catalog root containing software/items and workflow/profiles')
@@ -39,6 +45,8 @@ def parser():
         cmd.add_argument('--snapshot', required=True, type=Path)
         cmd.add_argument('--json', action='store_true')
         if name == 'apply':
+            cmd.add_argument('--expected-version', metavar='VERSION', type=nonempty_version,
+                             help='Require the plan version returned by snapshot apply --dry-run')
             cmd.add_argument('--dry-run', action='store_true')
             cmd.add_argument('--detach-hardlink', action='store_true')
     return p
@@ -52,7 +60,8 @@ def run(args):
             return snapshot.document() if args.json else None
         if args.action == 'inspect':
             return api.verify_archive(args.snapshot).document()
-        return api.apply_snapshot(args.snapshot, dry=args.dry_run, detach=args.detach_hardlink)
+        return api.apply_snapshot(args.snapshot, dry=args.dry_run, detach=args.detach_hardlink,
+                                  expected_version=args.expected_version)
     editor = api.Editor(args.catalog)
     if args.command == 'list':
         return editor.configurations()

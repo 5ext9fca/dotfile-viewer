@@ -229,6 +229,35 @@ class ViewerTest(Fixture):
         api.apply_snapshot(self.archive, platform=self.platform, roots=self.roots, backup=self.root / 'backups')
         self.assertEqual(target.stat().st_mode & 0o777, 0o700)
 
+    def test_cli_apply_expected_version(self):
+        self.capture()
+        target = self.config / 'demo/settings'
+        backup = self.root / 'backups'
+        args = ['snapshot', 'apply', '--snapshot', str(self.archive)]
+        with (patch('dotfile_viewer.application.host', return_value=self.platform),
+              patch('dotfile_viewer.application.host_roots', return_value=self.roots),
+              patch.dict(os.environ, {'DOTFILES_BACKUP_DIR': str(backup)})):
+            def preview_version():
+                output = io.StringIO()
+                with redirect_stdout(output):
+                    self.assertEqual(cli.main([*args, '--dry-run', '--json']), 0)
+                return json.loads(output.getvalue())['version']
+
+            version = preview_version()
+            target.write_text('local change')
+            with redirect_stderr(io.StringIO()) as error:
+                self.assertEqual(cli.main([*args, '--expected-version', version]), 4)
+            self.assertIn('preview again', error.getvalue())
+            with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as invalid:
+                cli.main([*args, '--expected-version', ''])
+            self.assertEqual(invalid.exception.code, 2)
+            self.assertEqual(target.read_text(), 'local change')
+            self.assertFalse(backup.exists())
+            version = preview_version()
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(cli.main([*args, '--expected-version', version]), 0)
+            self.assertEqual(target.read_bytes(), b'hello\r\n')
+
     def test_preview_conflict(self):
         self.capture()
         with api.SnapshotSession(self.archive, platform=self.platform, roots=self.roots, backup=self.root / 'backups') as session:

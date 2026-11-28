@@ -125,3 +125,7 @@ Fedora 45 x86_64、Python 3.14.10。公共 API 加载内置声明并解析 APT�
 ## 2026-11-29 · Windows TeX Live ISO
 
 Fedora 45 x86_64、Python 3.14.10。Viewer 严格检查 29 项通过。syncronizer 使用当前 Viewer 验证 Windows 普通与完整 profile 的离线计划，两种 profile 都选择 texlive-iso，默认和中国镜像模式分别解析到 CTAN、清华的 ISO 地址。未在 Windows 原生下载安装。
+
+## 2026-11-29 · CLI 快照应用计划版本校验
+
+Fedora 45 x86_64、Python 3.14.10。运行 `./tests/check.sh --strict`，30 项通过。新增 CLI 用例使用临时目录和合成配置，验证预览版本匹配时应用成功，目标变化时返回 4、保留目标内容且未创建备份会话，显式空值返回 2。本轮未在 macOS、Windows 或 WSL 原生运行。
