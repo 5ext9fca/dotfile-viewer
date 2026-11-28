@@ -27,3 +27,5 @@ Viewer 单向被 syncronizer 依赖。Viewer 持有声明及配置文件能力�
 单次调用 `apply_snapshot()` 时，预览固定 ZIP 副本并流式校验全部内容，省去解压写盘，直接返回当次计划，实际应用在部署锁内生成计划。显式构造 `SnapshotSession` 时会先预检目标，之后每次预览或应用都会重新检查。
 
 快照预览与应用按相同的父目录优先顺序处理条目。单文件原子替换成功后若读取或写报告失败，保存流程会核对目标身份、内容和元数据。失败报告的 `recovery` 字段记录本次处理结果。`restored` 表示恢复了原文件，`removed` 表示移除了本次新建的文件，`manual` 表示需要人工检查。命令错误包含报告和备份位置。
+
+`install_schema` 提供安装声明规则和依赖排序。`install_config.read_items()` 负责 TOML 与旧 .conf 格式分派，原入口继续导出 `ROOT`、`rows`、`DeclarationError`、`InstallSchema` 和 `sort_items`。

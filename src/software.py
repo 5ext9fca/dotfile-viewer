@@ -4,7 +4,7 @@ import re
 from copy import deepcopy
 import tomllib
 
-from dotfile_viewer.install_config import ROOT, PLATFORMS, InstallSchema, DeclarationError, sort_items
+from dotfile_viewer.install_schema import ROOT, PLATFORMS, InstallSchema, DeclarationError, sort_items
 
 ID = re.compile(r'[a-z0-9][a-z0-9-]*\Z')
 ROOTS = {'home', 'config_home', 'app_data', 'local_app_data'}

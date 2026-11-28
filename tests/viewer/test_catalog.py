@@ -11,6 +11,27 @@ class CatalogTest(Fixture):
         count = sum('/' not in section for item in catalog.values() for section in item.get('install', {}))
         self.assertEqual(normalize.call_count, count)
 
+    def test_install_config_compatibility(self):
+        from shutil import copytree
+        from dotfile_viewer import install_config, install_schema
+        for name in ('ROOT', 'DeclarationError', 'InstallSchema', 'rows', 'sort_items'):
+            self.assertIs(getattr(install_config, name), getattr(install_schema, name))
+        catalog = api.load_catalog()
+        for platform in install_schema.PLATFORMS:
+            self.assertEqual(install_config.read_items(install_schema.ROOT / 'software/items', platform),
+                             api.installation(catalog, platform))
+        directory = self.root / 'legacy'
+        directory.mkdir()
+        schema = copytree(install_schema.ROOT / 'install/schema', self.root / 'schema')
+        item = directory / 'demo.conf'
+        item.write_text('[linux.apt]\norder=1\nmethod=apt\nsource_kind=default\npackages=demo\n')
+        self.assertEqual(install_config.read_items(directory, 'linux.apt', schema)[0]['id'], 'demo')
+        item.write_text(item.read_text() + 'depends_on=absent\n')
+        with self.assertRaisesRegex(DeclarationError, 'Missing dependency'):
+            install_config.read_items(directory, 'macos', schema)
+        (directory / 'demo.toml').write_bytes((self.catalog / 'software/items/demo.toml').read_bytes())
+        self.assertEqual(install_config.read_items(directory, 'linux.apt', schema), [])
+
     def test_dependency_merge(self):
         schema = InstallSchema()
         self.assertEqual(schema.dependencies('z b', 'a z'), 'z b a')
@@ -19,13 +40,13 @@ class CatalogTest(Fixture):
                 schema.dependencies(*fields)
 
     def test_sort_parses_environments_once_per_connected_node(self):
-        from dotfile_viewer import install_config
+        from dotfile_viewer import install_schema
         graph = {f'b{i}': dict(id=f'b{i}', order='1', environments='native wsl') for i in range(128)}
         dependencies = ' '.join(graph)
         graph.update({f'a{i}': dict(id=f'a{i}', order='2', depends_on=dependencies, environments='native')
                       for i in range(128)})
         graph['isolated'] = dict(id='isolated', order='0', environments='native')
-        with patch.object(install_config, 'words', wraps=install_config.words) as split:
+        with patch.object(install_schema, 'words', wraps=install_schema.words) as split:
             rows = sort_items(graph)
         self.assertEqual(sum(call.args[0] in ('native', 'native wsl') for call in split.call_args_list), 256)
         self.assertEqual([r['id'] for r in rows], sorted(graph, key=lambda k: (graph[k]['order'], k)))

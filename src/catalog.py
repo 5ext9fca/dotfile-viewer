@@ -1,7 +1,7 @@
 """The one catalog boundary used by both applications."""
 import os
 from pathlib import Path
-from .install_config import ROOT, DeclarationError
+from .install_schema import ROOT, DeclarationError
 from .software import read_catalog, profile_selection, ID
 
 

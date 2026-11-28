@@ -4,7 +4,7 @@ from datetime import datetime
 import re
 
 from .errors import SnapshotError
-from .install_config import InstallSchema
+from .install_schema import InstallSchema
 from .paths import is_excluded
 from .software import PLATFORMS, _installation, _select, relative, validate
 

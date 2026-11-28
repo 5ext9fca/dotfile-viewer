@@ -234,3 +234,5 @@ Linux、Python 3.14，同机五组中位数。空文件、64 B、8 KiB 的独立
 ## 会话租约、安装 schema、文件发布与 CLI 分派
 
 Linux、Python 3.14。借用外层租约通过重复应用、过期令牌、冲突令牌、会话关闭与 dry-run 检查。严格检查 70 项通过。本轮未在 Windows、macOS 或 WSL 原生运行。
+
+两个干净解释器分别从 software 和 install_config 开始导入成功。旧入口和底层 schema 对象身份一致，五个平台内置输出、临时 .conf、自定义 schema 目录、TOML 优先级和跨平台图校验通过。严格检查 71 项通过。

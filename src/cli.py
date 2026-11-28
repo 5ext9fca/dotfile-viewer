@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 from . import api
-from .install_config import DeclarationError
+from .install_schema import DeclarationError
 
 
 def nonempty_version(value):
