@@ -11,6 +11,24 @@ from viewer_fixture import Fixture
 
 
 class CliTest(Fixture):
+    def test_show_and_save_preserve_text_format(self):
+        path = self.config / 'demo/settings'
+        bom = bytes.fromhex('efbbbf')
+        for data in (b'', bom, b'plain', b'a\nb', bom + b'a\r\n\r\nb'):
+            path.write_bytes(data)
+            raw = io.BytesIO()
+            with io.TextIOWrapper(raw) as output, redirect_stdout(output), patch.object(api, 'Editor', return_value=self.editor):
+                self.assertEqual(cli.main(['show', 'demo', 'settings', 'settings']), 0)
+                self.assertEqual(raw.getvalue(), data)
+            self.save('c\nd')
+            expected = b'c\r\nd' if b'\r' in data else b'c\nd'
+            self.assertEqual(path.read_bytes(), (bom if data.startswith(bom) else b'') + expected)
+        for data in (b'\r', b'a\r\nb\n', b'a\r\r\n', b'\x00', b'\xff'):
+            path.write_bytes(data)
+            current = self.read()
+            self.assertFalse(current['editable'])
+            self.assertEqual(current['reason'], 'Not UTF-8' if data == b'\xff' else 'Binary or mixed newline content')
+
     def test_cli_export_output(self):
         args = ['--catalog', str(self.catalog), 'snapshot', 'export', '--software', 'demo']
         with patch.object(api, 'host', return_value=self.platform), patch.object(api, 'host_roots', return_value=self.roots):

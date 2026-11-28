@@ -123,11 +123,17 @@ class Editor:
             text = data.decode('utf-8-sig')
         except UnicodeError:
             return dict(result, reason='Not UTF-8')
-        crlf = '\r\n' in text
-        rest = text.replace('\r\n', '')
-        if '\x00' in text or '\r' in rest or (crlf and '\n' in rest):
+        bom = data.startswith(b'\xef\xbb\xbf')
+        if '\x00' in text:
             return dict(result, reason='Binary or mixed newline content')
-        return dict(result, editable=True, content=text.replace('\r\n', '\n'), bom=data.startswith(b'\xef\xbb\xbf'), newline='crlf' if crlf else 'lf')
+        newline = 'lf'
+        if '\r' in text:
+            pairs = text.count('\r\n')
+            if pairs != text.count('\r') or pairs != text.count('\n'):
+                return dict(result, reason='Binary or mixed newline content')
+            text = text.replace('\r\n', '\n')
+            newline = 'crlf'
+        return dict(result, editable=True, content=text, bom=bom, newline=newline)
 
     def save(self, software, config, file, content, expected_version, *, detach=False):
         if not isinstance(content, str) or not expected_version:
