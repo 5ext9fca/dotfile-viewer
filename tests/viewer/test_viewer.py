@@ -50,6 +50,12 @@ class Fixture(unittest.TestCase):
 
 
 class ViewerTest(Fixture):
+    def test_catalog_normalizes_each_installation_once(self):
+        with patch.object(InstallSchema, 'normalize', autospec=True, side_effect=InstallSchema.normalize) as normalize:
+            catalog = api.load_catalog()
+        count = sum('/' not in section for item in catalog.values() for section in item.get('install', {}))
+        self.assertEqual(normalize.call_count, count)
+
     def test_dependency_merge(self):
         schema = InstallSchema()
         self.assertEqual(schema.dependencies('z b', 'a z'), 'z b a')

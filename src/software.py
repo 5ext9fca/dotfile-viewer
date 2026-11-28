@@ -18,7 +18,10 @@ def relative(value):
 
 
 def validate(identity, data, schema=None):
-    schema = schema or InstallSchema()
+    return _validate(identity, data, schema or InstallSchema())
+
+
+def _validate(identity, data, schema, normalized=None):
     if identity in ('all', 'none') or not ID.fullmatch(identity) or not isinstance(data, dict) or set(data) - {'schema_version', 'install', 'config', 'requires'}:
         raise DeclarationError('Invalid software declaration')
     if type(data.get('schema_version')) is not int or data['schema_version'] != 1:
@@ -36,7 +39,9 @@ def validate(identity, data, schema=None):
             raise DeclarationError('Undeclared installation method')
     for platform in installs:
         if '/' not in platform:
-            schema.normalize(installs, platform)
+            item = schema.normalize(installs, platform)
+            if normalized is not None:
+                normalized[identity, platform] = item
     requires = data.get('requires', {})
     if not isinstance(requires, dict):
         raise DeclarationError('requires must be a table')
@@ -74,13 +79,14 @@ def validate(identity, data, schema=None):
 
 def read_catalog(directory=ROOT / 'software/items'):
     schema = InstallSchema()
-    catalog = {p.stem: validate(p.stem, tomllib.loads(p.read_text(encoding='utf-8')), schema) for p in sorted(Path(directory).glob('*.toml'))}
+    normalized = {}
+    catalog = {p.stem: _validate(p.stem, tomllib.loads(p.read_text(encoding='utf-8')), schema, normalized) for p in sorted(Path(directory).glob('*.toml'))}
     if not catalog:
         raise DeclarationError('No software declarations found')
     # Validate all platform dependency graphs, including configuration-only items.
     for platform in PLATFORMS:
         _selection_ids(catalog, platform, 'native', ['all'], schema, filter_environment=False)
-        _installation(catalog, platform, schema)
+        _installation(catalog, platform, schema, normalized)
     return catalog
 
 
@@ -88,11 +94,11 @@ def installation(catalog, platform):
     return _installation(catalog, platform, InstallSchema())
 
 
-def _installation(catalog, platform, schema):
+def _installation(catalog, platform, schema, normalized=None):
     items = {}
     for identity, data in catalog.items():
         if platform in data.get('install', {}):
-            item = schema.normalize(data['install'], platform)
+            item = normalized[identity, platform] if normalized is not None else schema.normalize(data['install'], platform)
             extra = data.get('requires', {}).get(platform, [])
             item['depends_on'] = schema.dependencies(item.get('depends_on', ''), ' '.join(extra))
             items[identity] = dict(item, id=identity)
