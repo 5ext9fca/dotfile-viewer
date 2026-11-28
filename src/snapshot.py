@@ -4,6 +4,7 @@ This module never installs software or writes application configuration. Archive
 members are validated before extraction; capture observes files without following
 links and never publishes a partial archive.
 """
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 import errno
@@ -156,6 +157,34 @@ def _write_manifest(archive, document):
             json.dump(document, stream, ensure_ascii=False, indent=2)
 
 
+def _collect_snapshot(platform, selection, chosen, configs, locations, roots, archive=None):
+    before = dict(_inventory(configs, locations))
+    entries = []
+    for (identity, config, rel), (path, observed, directory) in before.items():
+        entry = dict(software=identity, config=config, path=rel, kind='directory' if directory else 'file',
+                     size=0, sha256='', executable=0)
+        if not directory:
+            no_links(path)
+            flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0)
+            with os.fdopen(os.open(path, flags), 'rb') as source:
+                if signature(os.fstat(source.fileno())) != observed:
+                    raise SnapshotError(f'Configuration changed during capture: {path}')
+                with archive.open(member_name(entry), 'w', force_zip64=True) if archive else nullcontext() as sink:
+                    entry['size'], entry['sha256'] = _hash_payload(source, sink)
+                if signature(os.fstat(source.fileno())) != observed:
+                    raise SnapshotError(f'Configuration changed during capture: {path}')
+            entry['executable'] = observed[2] & 0o111
+        entries.append(entry)
+    for key, observation in _inventory(configs, _targets(configs, roots)):
+        if before.pop(key, None) != observation:
+            raise SnapshotError('Configuration tree changed during capture; stop writers and retry')
+    if before:
+        raise SnapshotError('Configuration tree changed during capture; stop writers and retry')
+    snapshot = Snapshot(platform, datetime.now(timezone.utc).isoformat(), tuple(selection), chosen, tuple(entries))
+    Snapshot.parse(snapshot.document())
+    return snapshot
+
+
 def capture(catalog, platform, selection, roots, output, dry=False):
     platform.validate()
     chosen = select(catalog, platform.branch, platform.environment, selection)
@@ -169,57 +198,19 @@ def capture(catalog, platform, selection, roots, output, dry=False):
     physical_output = output.parent.resolve() / output.name
     if any(physical_output == p or physical_output.is_relative_to(p) for p in locations.values()):
         raise SnapshotError('Snapshot output overlaps a configuration source')
-    before = dict(_inventory(configs, locations))
-    entries = []
-    # Dry runs still check readability and content, but produce no output archive.
-    temporary = None
-    archive = None
+    if dry:
+        return _collect_snapshot(platform, selection, chosen, configs, locations, roots)
+    fd, temporary = tempfile.mkstemp(prefix='.dotfiles-snapshot-', suffix='.zip', dir=output.parent)
     try:
-        if not dry:
-            fd, temporary = tempfile.mkstemp(prefix='.dotfiles-snapshot-', suffix='.zip', dir=output.parent)
-            os.close(fd)
-            archive = zipfile.ZipFile(temporary, 'w', compression=zipfile.ZIP_DEFLATED)
-        for (identity, config, rel), (path, observed, directory) in before.items():
-            entry = dict(software=identity, config=config, path=rel, kind='directory' if directory else 'file',
-                         size=0, sha256='', executable=0)
-            if not directory:
-                no_links(path)
-                flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0)
-                with os.fdopen(os.open(path, flags), 'rb') as source:
-                    if signature(os.fstat(source.fileno())) != observed:
-                        raise SnapshotError(f'Configuration changed during capture: {path}')
-                    sink = archive.open(member_name(entry), 'w', force_zip64=True) if archive else None
-                    try:
-                        entry['size'], entry['sha256'] = _hash_payload(source, sink)
-                    finally:
-                        if sink:
-                            sink.close()
-                    if signature(os.fstat(source.fileno())) != observed:
-                        raise SnapshotError(f'Configuration changed during capture: {path}')
-                entry['executable'] = observed[2] & 0o111
-            entries.append(entry)
-        for key, observation in _inventory(configs, _targets(configs, roots)):
-            if before.pop(key, None) != observation:
-                raise SnapshotError('Configuration tree changed during capture; stop writers and retry')
-        if before:
-            raise SnapshotError('Configuration tree changed during capture; stop writers and retry')
-        snapshot = Snapshot(platform, datetime.now(timezone.utc).isoformat(), tuple(selection), chosen, tuple(entries))
-        document = snapshot.document()
-        Snapshot.parse(document)
-        if archive:
-            _write_manifest(archive, document)
-            archive.close()
-            archive = None
-            verify_archive(temporary)
-            # Atomic no-clobber publication. Failure on filesystems without hard
-            # links is explicit; never fall back to a partially visible copy.
-            os.link(temporary, output)
+        os.close(fd)
+        with zipfile.ZipFile(temporary, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+            snapshot = _collect_snapshot(platform, selection, chosen, configs, locations, roots, archive)
+            _write_manifest(archive, snapshot.document())
+        verify_archive(temporary)
+        os.link(temporary, output)
         return snapshot
     finally:
-        if archive:
-            archive.close()
-        if temporary:
-            Path(temporary).unlink(missing_ok=True)
+        Path(temporary).unlink(missing_ok=True)
 
 
 def verify_archive(path, destination=None):

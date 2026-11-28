@@ -209,6 +209,7 @@ class ArchiveTest(Fixture):
                                   platform=self.platform, roots=self.roots, dry=True)
         snapshot = self.capture()
         staged = self.root / 'unpacked'
+        self.assertEqual(snapshot.software, dry.software)
         self.assertEqual(snapshot.entries, dry.entries)
         for destination in (None, staged):
             self.assertEqual(api.verify_archive(self.archive, destination), snapshot)
@@ -236,6 +237,32 @@ class ArchiveTest(Fixture):
             self.capture()
         self.assertFalse(self.archive.exists())
         self.assertEqual(list(self.root.glob('.dotfiles-snapshot-*')), [])
+
+    def test_export_publication_failures(self):
+        close = zipfile.ZipFile.close
+
+        def fail_close(archive):
+            writing = archive.mode == 'w' and archive.fp is not None
+            close(archive)
+            if writing:
+                raise OSError('close failed')
+
+        def competing_output(source, target):
+            Path(target).write_bytes(b'other')
+            raise FileExistsError(target)
+
+        for stage, failure in [
+            ('close', patch.object(zipfile.ZipFile, 'close', fail_close)),
+            ('verify', patch('dotfile_viewer.snapshot.verify_archive', side_effect=api.SnapshotError('verify'))),
+            ('publish', patch('dotfile_viewer.snapshot.os.link', side_effect=competing_output)),
+        ]:
+            with self.subTest(stage=stage), failure, self.assertRaises((api.SnapshotError, OSError)):
+                self.capture()
+            self.assertEqual(list(self.root.glob('.dotfiles-snapshot-*')), [])
+            if stage == 'publish':
+                self.assertEqual(self.archive.read_bytes(), b'other')
+            else:
+                self.assertFalse(self.archive.exists())
 
     def test_export_stream_write_failure(self):
         original = zipfile.ZipFile.open
