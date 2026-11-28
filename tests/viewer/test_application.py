@@ -224,6 +224,20 @@ class ApplicationTest(Fixture):
             self.assertEqual(Path(saved['backup']).read_bytes(), b'local')
             self.assertEqual(first.read_bytes(), b'archived')
 
+    def test_invalid_versions_rejected_at_entry(self):
+        self.capture()
+        options = dict(platform=self.platform, roots=self.roots, backup=self.editor.backup)
+        with api.SnapshotSession(self.archive, **options) as session:
+            with (patch('dotfile_viewer.application.shutil.copyfile', side_effect=AssertionError),
+                  patch('dotfile_viewer.application.deployment_lease', side_effect=AssertionError),
+                  patch('dotfile_viewer.application.observe', side_effect=AssertionError)):
+                for value in ('', False, 42):
+                    for dry in (True, False):
+                        for apply in (session.apply, lambda **kw: api.apply_snapshot(self.archive, **options, **kw)):
+                            with self.assertRaisesRegex(api.CoreError, 'non-empty'):
+                                apply(expected_version=value, dry=dry)
+        self.assertFalse(self.editor.backup.exists())
+
     def test_preview_conflict(self):
         self.capture()
         with api.SnapshotSession(self.archive, platform=self.platform, roots=self.roots, backup=self.root / 'backups') as session:

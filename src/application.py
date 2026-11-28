@@ -30,6 +30,19 @@ def _confirm_detach(plan, detach):
         raise ConfirmationRequired('Snapshot replaces hard links; confirm --detach-hardlink')
 
 
+def _validate_version(value):
+    if value is not None and (not isinstance(value, str) or not value):
+        raise CoreError('Expected version must be a non-empty string')
+
+
+def apply_snapshot(path, *, dry=False, detach=False, expected_version=None, lease=None,
+                   platform=None, roots=None, backup=None, protected=()):
+    _validate_version(expected_version)
+    with _PreparedSnapshot(path, stage_payload=not dry, platform=platform, roots=roots,
+                           backup=backup, protected=protected) as session:
+        return session.apply(dry=dry, detach=detach, expected_version=expected_version, lease=lease)
+
+
 class _PreparedSnapshot:
     """Pin an archive in private staging for preview, installation and application."""
     def __init__(self, path, *, platform=None, roots=None, backup=None, protected=(), stage_payload=True):
@@ -114,9 +127,10 @@ class _PreparedSnapshot:
 
     def apply(self, *, dry=False, expected_version=None, detach=False, lease=None):
         self._ensure_open()
+        _validate_version(expected_version)
         with self._apply_lease(lease, dry):
             plan = self.preview()
-            if expected_version and plan['version'] != expected_version:
+            if expected_version is not None and plan['version'] != expected_version:
                 raise ConflictError('Targets changed since preview; preview again')
             if dry:
                 return dict(status='preview', **plan)
