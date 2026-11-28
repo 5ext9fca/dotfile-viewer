@@ -156,7 +156,6 @@ def _targets(configs, roots):
 
 
 def _inventory(configs, locations):
-    result = {}
     for key, path in locations.items():
         exclusions = configs[key].get('exclude', [])
         def visit(current, relative_path):
@@ -167,15 +166,14 @@ def _inventory(configs, locations):
                 raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), str(current))
             if not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode)):
                 raise SnapshotError(f'Unsupported configuration file: {current}')
-            result[(*key, relative_path)] = (current, signature(info), stat.S_ISDIR(info.st_mode))
+            yield (*key, relative_path), (current, signature(info), stat.S_ISDIR(info.st_mode))
             if stat.S_ISDIR(info.st_mode):
                 for child in sorted(current.iterdir()):
                     rel = relative_path + '/' + child.name if relative_path else child.name
                     if not relative(rel):
                         raise SnapshotError(f'Unsupported configuration filename: {child}')
-                    visit(child, rel)
-        visit(path, '')
-    return result
+                    yield from visit(child, rel)
+        yield from visit(path, '')
 
 
 def json_object(pairs):
@@ -270,7 +268,7 @@ def capture(catalog, platform, selection, roots, output, dry=False):
     physical_output = output.parent.resolve() / output.name
     if any(physical_output == p or physical_output.is_relative_to(p) for p in locations.values()):
         raise SnapshotError('Snapshot output overlaps a configuration source')
-    before = _inventory(configs, locations)
+    before = dict(_inventory(configs, locations))
     entries = []
     # Dry runs still check readability and content, but produce no output archive.
     temporary = None
@@ -299,7 +297,10 @@ def capture(catalog, platform, selection, roots, output, dry=False):
                         raise SnapshotError(f'Configuration changed during capture: {path}')
                 entry['executable'] = observed[2] & 0o111
             entries.append(entry)
-        if _inventory(configs, _targets(configs, roots)) != before:
+        for key, observation in _inventory(configs, _targets(configs, roots)):
+            if before.pop(key, None) != observation:
+                raise SnapshotError('Configuration tree changed during capture; stop writers and retry')
+        if before:
             raise SnapshotError('Configuration tree changed during capture; stop writers and retry')
         snapshot = Snapshot(platform, datetime.now(timezone.utc).isoformat(), tuple(selection), chosen, tuple(entries))
         Snapshot.parse(snapshot.document())

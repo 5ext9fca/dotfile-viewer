@@ -578,20 +578,38 @@ class ViewerTest(Fixture):
 
     def test_capture_rechecks_tree_and_root(self):
         from dotfile_viewer import snapshot
-        inventory = snapshot._inventory
-        for change in ('add', 'redirect'):
-            def scan(configs, locations):
-                result = inventory(configs, locations)
-                if change == 'add':
-                    (self.config / 'demo/new').touch()
-                else:
-                    self.roots['config_home'] = str(self.root / 'alternate')
-                return result
-
-            (self.root / 'alternate/demo').mkdir(parents=True, exist_ok=True)
-            with patch.object(snapshot, '_inventory', side_effect=scan), self.assertRaises(api.SnapshotError):
-                self.capture()
-            self.assertFalse(self.archive.exists())
+        for dry in (False, True):
+            for change in ('add', 'delete', 'replace', 'type', 'redirect'):
+                with self.subTest(dry=dry, change=change):
+                    base = self.root / f'{dry}-{change}'
+                    directory = base / 'demo'
+                    directory.mkdir(parents=True)
+                    leaf = directory / 'leaf'
+                    leaf.touch()
+                    roots = dict(config_home=str(base))
+                    targets = snapshot._targets
+                    calls = 0
+                    def resolve(configs, mapping):
+                        nonlocal calls
+                        calls += 1
+                        if calls == 2:
+                            if change == 'add':
+                                (directory / 'new').touch()
+                            elif change == 'redirect':
+                                roots['config_home'] = str(self.config)
+                            elif change == 'replace':
+                                replacement = directory / 'replacement'
+                                replacement.touch()
+                                replacement.replace(leaf)
+                            else:
+                                leaf.unlink()
+                                if change == 'type':
+                                    leaf.mkdir()
+                        return targets(configs, mapping)
+                    with patch.object(snapshot, '_targets', side_effect=resolve), self.assertRaises(api.SnapshotError):
+                        api.export_snapshot(self.archive, catalog=self.catalog, software=['demo'],
+                                            platform=self.platform, roots=roots, dry=dry)
+                    self.assertFalse(self.archive.exists())
 
     def test_capture_missing_required_path(self):
         missing = self.config / 'demo'
