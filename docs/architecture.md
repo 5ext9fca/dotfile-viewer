@@ -29,3 +29,5 @@ Viewer 单向被 syncronizer 依赖。Viewer 持有声明及配置文件能力�
 快照预览与应用按相同的父目录优先顺序处理条目。单文件原子替换成功后若读取或写报告失败，保存流程会核对目标身份、内容和元数据。失败报告的 `recovery` 字段记录本次处理结果。`restored` 表示恢复了原文件，`removed` 表示移除了本次新建的文件，`manual` 表示需要人工检查。命令错误包含报告和备份位置。
 
 `install_schema` 提供安装声明规则和依赖排序。`install_config.read_items()` 负责 TOML 与旧 .conf 格式分派，原入口继续导出 `ROOT`、`rows`、`DeclarationError`、`InstallSchema` 和 `sort_items`。
+
+会话拥有固定归档及解包暂存区。退出上下文或显式调用 `close()` 都会清理暂存区，重复关闭安全。关闭后仍可读取 `session.snapshot`，重新进入、预览和应用会立即抛出 `CoreError`。外层借出的部署租约由外层释放。

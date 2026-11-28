@@ -33,6 +33,7 @@ class _PreparedSnapshot:
         self.backup = Path(backup or os.environ.get('DOTFILES_BACKUP_DIR') or state_home() / 'backups').resolve()
         self.protected = [self.path, Path(__file__).resolve().parent, *map(lambda p: Path(p).resolve(), protected)]
         self._temporary = tempfile.TemporaryDirectory(prefix='viewer-snapshot-')
+        self._closed = False
         self.scratch = Path(self._temporary.name)
         try:
             pinned = self.scratch / 'snapshot.zip'
@@ -52,16 +53,24 @@ class _PreparedSnapshot:
             self.close()
             raise
 
+    def _ensure_open(self):
+        if self._closed:
+            raise CoreError('Snapshot session is closed')
+
     def __enter__(self):
+        self._ensure_open()
         return self
 
     def __exit__(self, *args):
         self.close()
 
     def close(self):
-        self._temporary.cleanup()
+        if not self._closed:
+            self._temporary.cleanup()
+            self._closed = True
 
     def preview(self):
+        self._ensure_open()
         rows = []
         for entry in self._entries:
             base = self.destinations[(entry['software'], entry['config'])]
@@ -91,6 +100,7 @@ class _PreparedSnapshot:
         return deployment_lease(path=lease.get('path'), token=lease.get('token'), dry=dry)
 
     def apply(self, *, dry=False, expected_version=None, detach=False, lease=None):
+        self._ensure_open()
         with self._apply_lease(lease, dry):
             plan = self.preview()
             if expected_version and plan['version'] != expected_version:

@@ -93,6 +93,43 @@ class ApplicationTest(Fixture):
             with api.SnapshotSession(self.archive, **options):
                 self.fail('Session exposed before preflight')
 
+    def test_closed_session_rejects_operations_before_side_effects(self):
+        snapshot = self.capture()
+        options = dict(platform=self.platform, roots=self.roots, backup=self.editor.backup)
+        target = self.config / 'demo/settings'
+        directory = self.config / 'demo/empty'
+        for change in ('unchanged', 'replace', 'mkdir'):
+            target.write_bytes(b'local' if change == 'replace' else b'hello\r\n')
+            if change == 'mkdir':
+                directory.rmdir()
+            with api.deployment_lease() as lease:
+                with api.SnapshotSession(self.archive, lease=lease, **options) as session:
+                    self.assertTrue(session.scratch.is_dir())
+                session.close()
+                self.assertFalse(session.scratch.exists())
+                self.assertEqual(session.snapshot.document(), snapshot.document())
+                with (patch.object(session, '_apply_lease') as acquire,
+                      patch('dotfile_viewer.application.observe') as observed,
+                      patch('dotfile_viewer.application.atomic_json') as report):
+                    for operation in (session.__enter__, session.preview, lambda: session.apply(dry=True), session.apply):
+                        with self.subTest(change=change, operation=operation), self.assertRaisesRegex(api.CoreError, 'closed'):
+                            operation()
+                    acquire.assert_not_called()
+                    observed.assert_not_called()
+                    report.assert_not_called()
+                self.assertTrue(Path(lease['path']).is_dir())
+                self.assertEqual(directory.exists(), change != 'mkdir')
+                self.assertFalse(self.editor.backup.exists())
+
+    def test_construction_failure_removes_staging(self):
+        self.capture()
+        target = self.config / 'demo/settings'
+        target.unlink()
+        target.mkdir()
+        with patch('tempfile.tempdir', str(self.root)), self.assertRaisesRegex(api.CoreError, 'type conflict'):
+            api.SnapshotSession(self.archive, platform=self.platform, roots=self.roots, backup=self.editor.backup)
+        self.assertEqual(list(self.root.glob('viewer-snapshot-*')), [])
+
     def test_preview_conflict(self):
         self.capture()
         with api.SnapshotSession(self.archive, platform=self.platform, roots=self.roots, backup=self.root / 'backups') as session:
