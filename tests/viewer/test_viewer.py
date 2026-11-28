@@ -53,6 +53,41 @@ class ViewerTest(Fixture):
         self.assertIn('fish', api.load_catalog())
         self.assertEqual(len(self.editor.configurations()), 1)
 
+    def test_editor_only_probes_selected_configuration(self):
+        other = self.catalog / 'software/items/other.toml'
+        other.write_text(other.with_name('demo.toml').read_text().replace('path="demo"', 'path="other"'))
+        listed = self.editor.configurations()
+        self.assertEqual([row['software'] for row in listed], ['demo', 'other'])
+        self.assertEqual(listed[1]['configs'][0]['status'], 'missing')
+        lstat = Path.lstat
+
+        def check_path(path):
+            self.assertFalse(path.is_relative_to(self.config / 'other'), path)
+            return lstat(path)
+
+        with patch.object(Path, 'lstat', check_path):
+            target, description = self.editor.locate('demo', 'settings', 'settings')
+            self.assertEqual(description, listed[0]['configs'][0])
+            self.assertEqual(target, self.config / 'demo/settings')
+            self.assertIn('settings', [row['file'] for row in self.editor.files('demo', 'settings')])
+            version = self.read()['version']
+            with patch('dotfile_viewer.editor.load_catalog', wraps=api.load_catalog) as load:
+                self.assertEqual(self.save('updated', version)['status'], 'saved')
+                load.assert_called_once_with(self.catalog)
+
+        self.editor.backup = self.config / 'other/backups'
+        with self.assertRaisesRegex(api.CoreError, 'overlaps managed configuration'):
+            self.save('another change')
+        self.assertFalse(self.editor.backup.exists())
+        self.assertEqual(self.read()['content'], 'updated')
+
+    def test_editor_reloads_declarations_between_reads(self):
+        declaration = self.catalog / 'software/items/demo.toml'
+        self.assertTrue(self.read()['editable'])
+        declaration.write_text(declaration.read_text().replace('exclude=["ignored"]', 'exclude=["settings"]'))
+        with self.assertRaisesRegex(api.CoreError, 'excluded'):
+            self.read()
+
     def test_unix_shell_defaults(self):
         for name in ('macos', 'linux', 'wsl'):
             selected = api.selection(profile=name)

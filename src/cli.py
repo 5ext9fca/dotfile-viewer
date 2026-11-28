@@ -73,7 +73,6 @@ def run(args):
             return current
         if not current['editable']:
             raise api.CoreError(current['reason'])
-        path, _ = editor.locate(args.software, args.config, args.file)
         # Reuse verified content rather than reopening a possibly changed file.
         text = current['content'].replace('\n', '\r\n' if current['newline'] == 'crlf' else '\n')
         sys.stdout.buffer.write((b'\xef\xbb\xbf' if current['bom'] else b'') + text.encode('utf-8'))

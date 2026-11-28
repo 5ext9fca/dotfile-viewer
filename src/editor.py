@@ -21,53 +21,66 @@ class Editor:
         self.roots = roots if roots is not None else host_roots()
         self.backup = Path(backup or os.environ.get('DOTFILES_BACKUP_DIR') or state_home() / 'backups').resolve()
 
+    def _configs(self, data):
+        return (config for config in data.get('config', [])
+                if self.platform.branch in config['platforms']
+                and self.platform.environment in config.get('environments', ['native', 'wsl']))
+
+    def _root(self, config):
+        value = self.roots.get(config['root'])
+        if not value or not Path(value).is_absolute():
+            raise CoreError('Missing absolute configuration root')
+        return Path(value).resolve()
+
+    def _describe(self, config):
+        record = dict(config)
+        try:
+            root = self._root(config)
+            path = root / config['path']
+            record['resolved_path'] = str(path)
+            no_links(path, root)
+            info = path.lstat()
+            record['status'] = 'directory' if stat.S_ISDIR(info.st_mode) else 'file' if stat.S_ISREG(info.st_mode) else 'unsupported'
+        except FileNotFoundError:
+            record['status'] = 'missing'
+        except (CoreError, OSError) as exc:
+            record.update(status='unavailable', error=str(exc))
+        return record
+
     def configurations(self):
         result = []
         for identity, data in load_catalog(self.catalog).items():
-            configs = [c for c in data.get('config', []) if self.platform.branch in c['platforms'] and self.platform.environment in c.get('environments', ['native', 'wsl'])]
-            described = []
-            for config in configs:
-                record = dict(config)
-                try:
-                    value = self.roots.get(config['root'])
-                    if not value or not Path(value).is_absolute():
-                        raise CoreError('Missing absolute configuration root')
-                    root = Path(value).resolve()
-                    path = root / config['path']
-                    record['resolved_path'] = str(path)
-                    no_links(path, root)
-                    info = path.lstat()
-                    record['status'] = 'directory' if stat.S_ISDIR(info.st_mode) else 'file' if stat.S_ISREG(info.st_mode) else 'unsupported'
-                except FileNotFoundError:
-                    record['status'] = 'missing'
-                except (CoreError, OSError) as exc:
-                    record.update(status='unavailable', error=str(exc))
-                described.append(record)
-            if configs or self.platform.branch in data.get('install', {}):
+            described = [self._describe(config) for config in self._configs(data)]
+            if described or self.platform.branch in data.get('install', {}):
                 result.append(dict(software=identity, configs=described))
         return result
 
-    def locate(self, software, config, file=''):
-        item = next((c for s in self.configurations() if s['software'] == software for c in s['configs'] if c['id'] == config), None)
-        if item is None:
-            raise CoreError('Unknown or unavailable configuration')
+    def _config(self, catalog, software, config):
+        for item in self._configs(catalog.get(software, {})):
+            if item['id'] == config:
+                return item
+        raise CoreError('Unknown or unavailable configuration')
+
+    def _target(self, item, file):
         if file and not relative(file):
             raise CoreError('Invalid relative filename')
         if any(file == p or file.startswith(p + '/') for p in item.get('exclude', [])):
             raise CoreError('File excluded by declaration')
-        value = self.roots.get(item['root'])
-        if not value or not Path(value).is_absolute():
-            raise CoreError('Missing absolute configuration root')
-        root = Path(value).resolve()
+        root = self._root(item)
         base = root / item['path']
         target = base / file if file else base
         no_links(target, root)
-        for protected in (Path(__file__).resolve().parent, catalog_root(self.catalog) / 'software', catalog_root(self.catalog) / 'workflow'):
+        catalog = catalog_root(self.catalog)
+        for protected in (Path(__file__).resolve().parent, catalog / 'software', catalog / 'workflow'):
             if target == protected or target.is_relative_to(protected):
                 raise CoreError('Managed file overlaps Viewer code or catalog')
         if file and not base.is_dir():
             raise CoreError('A single-file declaration does not accept a filename')
-        return target, item
+        return target
+
+    def locate(self, software, config, file=''):
+        item = self._config(load_catalog(self.catalog), software, config)
+        return self._target(item, file), self._describe(item)
 
     def files(self, software, config):
         base, item = self.locate(software, config)
@@ -95,7 +108,11 @@ class Editor:
         return result
 
     def read(self, software, config, file=''):
-        path, _ = self.locate(software, config, file)
+        item = self._config(load_catalog(self.catalog), software, config)
+        return self._read_file(self._target(item, file))
+
+    @staticmethod
+    def _read_file(path):
         before = observe(path)
         result = dict(before, path=str(path), editable=False)
         if before['kind'] != 'file' or before['size'] > MAX_TEXT:
@@ -117,7 +134,10 @@ class Editor:
         if not isinstance(content, str) or not expected_version:
             raise CoreError('Content and expected version are required')
         with deployment_lease():
-            current = self.read(software, config, file)
+            catalog = load_catalog(self.catalog)
+            item = self._config(catalog, software, config)
+            path = self._target(item, file)
+            current = self._read_file(path)
             if current['version'] != expected_version:
                 raise ConflictError('File changed; reload and merge your draft')
             if not current['editable']:
@@ -132,9 +152,10 @@ class Editor:
                 data = b'\xef\xbb\xbf' + data
             if len(data) > MAX_TEXT:
                 raise CoreError('Text exceeds 2 MiB')
-            path, _ = self.locate(software, config, file)
-            managed = [Path(self.roots[c['root']]).resolve() / c['path']
-                       for s in self.configurations() for c in s['configs'] if self.roots.get(c['root'])]
+            if self._target(item, file) != path:
+                raise ConflictError('Configuration path changed during save')
+            managed = (Path(self.roots[c['root']]).resolve() / c['path']
+                       for data in catalog.values() for c in self._configs(data) if self.roots.get(c['root']))
             protected_state(self.backup, managed)
             session = new_session(self.backup)
             with tempfile.TemporaryDirectory(prefix='viewer-edit-') as tmp:
