@@ -5,7 +5,8 @@ No API in this package installs software or executes declaration contents.
 """
 from .catalog import catalog_root, load_catalog, selection
 from .software import installation, installation_roots, select, write_catalog, profile_selection
-from .snapshot import Platform, Snapshot, capture, verify_archive
+from .manifest import Platform, Snapshot
+from .snapshot import capture, verify_archive
 from .application import SnapshotSession, _PreparedSnapshot
 from .editor import Editor
 from .lease import deployment_lease

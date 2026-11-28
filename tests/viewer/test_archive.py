@@ -73,7 +73,7 @@ class ArchiveTest(Fixture):
         self.assertIn(('demo', 'b', 'cache/leaf'), entries)
 
     def test_capture_reuses_index(self):
-        from dotfile_viewer import snapshot
+        from dotfile_viewer import manifest, snapshot
         for count in (1, 8):
             configs = []
             for i in range(count):
@@ -82,9 +82,11 @@ class ArchiveTest(Fixture):
                 configs.append(dict(id=name, platforms=['macos'], root='config_home', path=name))
             catalog = {'demo': dict(schema_version=1, config=configs)}
             output = self.root / f'{count}.zip'
-            with patch.object(snapshot, 'configurations', wraps=snapshot.configurations) as index:
+            with (patch.object(snapshot, 'configurations', wraps=snapshot.configurations) as index,
+                  patch.object(manifest, 'configurations', wraps=manifest.configurations) as parsed_index):
                 preview = snapshot.capture(catalog, self.platform, ['demo'], self.roots, output, dry=True)
-                self.assertEqual(index.call_count, 2)
+                index.assert_called_once()
+                parsed_index.assert_called_once()
             saved = snapshot.capture(catalog, self.platform, ['demo'], self.roots, output)
             self.assertEqual(saved.entries, preview.entries)
             self.assertEqual(api.verify_archive(output).entries, preview.entries)
@@ -248,6 +250,21 @@ class ArchiveTest(Fixture):
             self.capture()
         self.assertFalse(self.archive.exists())
         self.assertEqual(list(self.root.glob('.dotfiles-snapshot-*')), [])
+
+    def test_manifest_model_imports_and_validation(self):
+        from dotfile_viewer import manifest, snapshot
+        for module in (snapshot, api):
+            self.assertIs(module.Snapshot, manifest.Snapshot)
+            self.assertIs(module.Platform, manifest.Platform)
+        document = self.capture().document()
+        with zipfile.ZipFile(self.archive) as archive:
+            self.assertEqual(json.loads(archive.read('manifest.json')), document)
+        parsed = manifest.Snapshot.parse(document)
+        self.assertEqual(parsed, api.verify_archive(self.archive))
+        self.assertEqual(parsed.document(), document)
+        document['software']['demo']['config'][0]['platforms'] = ['linux.apt']
+        with self.assertRaisesRegex(api.SnapshotError, 'another platform'):
+            api.Snapshot.parse(document)
 
     def test_old_manifest_rejected(self):
         self.capture()
