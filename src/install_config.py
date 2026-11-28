@@ -1,6 +1,7 @@
 """Installation declarations, normalization and deterministic dependency graphs."""
 
 from dataclasses import dataclass
+from heapq import heapify, heappop, heappush
 from pathlib import Path
 import re
 
@@ -213,21 +214,30 @@ def parse_file(path: Path, schema: InstallSchema) -> dict[str, dict[str, str]]:
 def sort_items(items: dict[str, dict[str, str]]) -> list[dict[str, str]]:
     def environments(item: dict[str, str]) -> set[str]:
         return set(words(item['environments'])) | ({'wsl'} if item.get('wsl_provider') else set())
+    dependents = {name: [] for name in items}
+    remaining = {}
     for name, entry in items.items():
-        for dependency in words(entry.get('depends_on', '')):
+        dependencies = words(entry.get('depends_on', ''))
+        remaining[name] = len(dependencies)
+        for dependency in dependencies:
             if dependency not in items:
                 raise DeclarationError(f'Missing dependency {dependency} for {name}')
             if not environments(entry) <= environments(items[dependency]):
                 raise DeclarationError('Dependency unavailable in selected environment')
+            dependents[dependency].append(name)
+
+    ready = [(int(items[name]['order']), name) for name, count in remaining.items() if count == 0]
+    heapify(ready)
     result = []
-    done: set[str] = set()
-    while len(done) != len(items):
-        ready = [entry for name, entry in items.items() if name not in done and set(words(entry.get('depends_on', ''))) <= done]
-        if not ready:
-            raise DeclarationError('Dependency cycle')
-        best = min(ready, key=lambda entry: (int(entry['order']), entry['id']))
-        result.append(best)
-        done.add(best['id'])
+    while ready:
+        _, name = heappop(ready)
+        result.append(items[name])
+        for dependent in dependents[name]:
+            remaining[dependent] -= 1
+            if remaining[dependent] == 0:
+                heappush(ready, (int(items[dependent]['order']), dependent))
+    if len(result) != len(items):
+        raise DeclarationError('Dependency cycle')
     return result
 
 

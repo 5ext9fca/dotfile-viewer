@@ -10,7 +10,7 @@ import warnings
 import zipfile
 from dotfile_viewer import api, cli, files
 from dotfile_viewer.files import observe
-from dotfile_viewer.install_config import DeclarationError, InstallSchema
+from dotfile_viewer.install_config import DeclarationError, InstallSchema, sort_items
 
 
 class Fixture(unittest.TestCase):
@@ -49,6 +49,27 @@ class Fixture(unittest.TestCase):
 
 
 class ViewerTest(Fixture):
+    def test_dependency_sort_order(self):
+        graph = {
+            name: dict(id=name, order=order, depends_on=deps, environments='native')
+            for name, order, deps in [('other', '10', ''), ('root', '2', ''), ('b', '1', 'root'),
+                                      ('a', '1', 'root'), ('end', '0', 'a b')]
+        }
+        self.assertEqual([row['id'] for row in sort_items(graph)], ['root', 'a', 'b', 'end', 'other'])
+
+    def test_dependency_validation(self):
+        graph = {'app': dict(id='app', order='0', depends_on='runtime', environments='native wsl')}
+        with self.assertRaisesRegex(DeclarationError, 'Missing dependency runtime for app'):
+            sort_items(graph)
+        graph['runtime'] = dict(id='runtime', order='1', environments='native')
+        with self.assertRaisesRegex(DeclarationError, 'Dependency unavailable in selected environment'):
+            sort_items(graph)
+        graph['runtime'].update(wsl_provider='windows-docker-desktop', provides='docker')
+        self.assertEqual([row['id'] for row in sort_items(graph)], ['runtime', 'app'])
+        graph['runtime']['depends_on'] = 'app'
+        with self.assertRaisesRegex(DeclarationError, 'Dependency cycle'):
+            sort_items(graph)
+
     def test_catalog_and_profiles(self):
         self.assertEqual(api.selection(self.catalog, profile='test'), ['demo'])
         self.assertIn('fish', api.load_catalog())
