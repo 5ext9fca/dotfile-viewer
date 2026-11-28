@@ -16,8 +16,9 @@ import tempfile
 import zipfile
 
 from dotfile_viewer.errors import SnapshotError
+from dotfile_viewer.install_config import InstallSchema
 from dotfile_viewer.paths import is_excluded, no_links, signature
-from dotfile_viewer.software import validate, select, installation, relative, PLATFORMS
+from dotfile_viewer.software import validate, select, _select, _installation, relative, PLATFORMS
 
 
 @dataclass(frozen=True)
@@ -65,16 +66,17 @@ class Snapshot:
         catalog = data['software']
         if not isinstance(catalog, dict) or not catalog:
             raise SnapshotError('Empty snapshot software set')
+        schema = InstallSchema()
         for identity, declaration in catalog.items():
-            validate(identity, declaration)
+            validate(identity, declaration, schema)
             if (any(p != platform.branch and not p.startswith(platform.branch + '/') for p in declaration.get('install', {}))
                     or any(c['platforms'] != [platform.branch] for c in declaration.get('config', []))
                     or any(p != platform.branch for p in declaration.get('requires', {}))):
                 raise SnapshotError('Snapshot contains declarations for another platform')
-        selected = select(catalog, platform.branch, platform.environment, names)
+        selected = _select(catalog, platform.branch, platform.environment, names, schema)
         if selected != catalog:
             raise SnapshotError('Snapshot software differs from selection closure')
-        installation(catalog, platform.branch)
+        _installation(catalog, platform.branch, schema)
         entries = data['entries']
         if not isinstance(entries, list):
             raise SnapshotError('Invalid snapshot entries')

@@ -79,13 +79,16 @@ def read_catalog(directory=ROOT / 'software/items'):
         raise DeclarationError('No software declarations found')
     # Validate all platform dependency graphs, including configuration-only items.
     for platform in PLATFORMS:
-        select(catalog, platform, 'native', ['all'], filter_environment=False)
-        installation(catalog, platform)
+        _select(catalog, platform, 'native', ['all'], schema, filter_environment=False)
+        _installation(catalog, platform, schema)
     return catalog
 
 
 def installation(catalog, platform):
-    schema = InstallSchema()
+    return _installation(catalog, platform, InstallSchema())
+
+
+def _installation(catalog, platform, schema):
     items = {}
     for identity, data in catalog.items():
         if platform in data.get('install', {}):
@@ -103,7 +106,10 @@ def available(data, platform):
 def select(catalog, platform, environment, names, *, filter_environment=True):
     if platform not in PLATFORMS or environment not in ('native', 'wsl'):
         raise DeclarationError('Unsupported platform/environment')
-    schema = InstallSchema()
+    return _select(catalog, platform, environment, names, InstallSchema(), filter_environment=filter_environment)
+
+
+def _select(catalog, platform, environment, names, schema, *, filter_environment=True):
     candidates = {i: d for i, d in catalog.items() if available(d, platform)}
     def eligible(data):
         if platform not in data.get('install', {}):

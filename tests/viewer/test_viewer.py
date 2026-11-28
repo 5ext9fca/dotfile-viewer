@@ -10,6 +10,7 @@ import warnings
 import zipfile
 from dotfile_viewer import api, cli, files
 from dotfile_viewer.files import observe
+from dotfile_viewer.install_config import DeclarationError, InstallSchema
 
 
 class Fixture(unittest.TestCase):
@@ -52,6 +53,35 @@ class ViewerTest(Fixture):
         self.assertEqual(api.selection(self.catalog, profile='test'), ['demo'])
         self.assertIn('fish', api.load_catalog())
         self.assertEqual(len(self.editor.configurations()), 1)
+
+    def test_schema_reuse_for_catalog_and_manifest(self):
+        items = self.catalog / 'software/items'
+        for name, order in [('client', 1), ('runtime', 2)]:
+            declaration = ('schema_version = 1\n[install."linux.apt"]\nmethod="apt"\n'
+                           f'packages="{name}"\nsource_kind="default"\norder="{order}"\n')
+            if name == 'client':
+                declaration += 'depends_on="runtime"\nenvironments="native"\n'
+            (items / f'{name}.toml').write_text(declaration)
+        with patch.object(InstallSchema, '__init__', autospec=True, side_effect=InstallSchema.__init__) as init:
+            catalog = api.load_catalog(self.catalog)
+            init.assert_called_once()
+        self.assertEqual([row['id'] for row in api.installation(catalog, 'linux.apt')], ['runtime', 'client'])
+        self.assertEqual(list(api.select(catalog, 'linux.apt', 'native', ['client'])), ['runtime', 'client'])
+        self.assertEqual(list(api.select(catalog, 'linux.apt', 'wsl', ['all'])), ['runtime'])
+
+        snapshot = api.export_snapshot(self.archive, catalog=self.catalog, software=['client'], dry=True,
+                                       platform=api.Platform('linux.apt', 'x86_64', 'native'), roots=self.roots)
+        manifest = snapshot.document()
+        with patch.object(InstallSchema, '__init__', autospec=True, side_effect=InstallSchema.__init__) as init:
+            self.assertEqual(api.Snapshot.parse(manifest), snapshot)
+            init.assert_called_once()
+
+        del manifest['software']['runtime']
+        with self.assertRaisesRegex(DeclarationError, 'runtime'):
+            api.Snapshot.parse(manifest)
+        (items / 'runtime.toml').unlink()
+        with self.assertRaisesRegex(DeclarationError, 'runtime'):
+            api.load_catalog(self.catalog)
 
     def test_editor_only_probes_selected_configuration(self):
         other = self.catalog / 'software/items/other.toml'
