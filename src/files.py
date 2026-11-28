@@ -47,7 +47,8 @@ def _read_observed(path, content_limit=None):
     with path.open('rb') as source:
         if signature(os.fstat(source.fileno())) != signature(info):
             raise ConflictError(f'File changed: {path}')
-        while chunk := source.read(1024 * 1024):
+        chunk_size = max(8192, min(info.st_size, 1024 * 1024))
+        while chunk := source.read(chunk_size):
             digest.update(chunk)
             if content is not None:
                 if len(content) + len(chunk) > content_limit:

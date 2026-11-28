@@ -153,7 +153,7 @@ class EditorTest(Fixture):
     def test_editor_reads_target_once(self):
         target = self.config / 'demo/settings'
         limit = 2 * 1024 * 1024
-        for data in (b'', b'\xef\xbb\xbfhello\r\n', b'x' * limit, b'x' * (limit + 1)):
+        for data in (b'', b'x' * 64, b'x' * 8192, b'\xef\xbb\xbfhello\r\n', b'x' * limit, b'x' * (limit + 1)):
             with self.subTest(size=len(data)):
                 target.write_bytes(data)
                 expected = observe(target)
@@ -166,6 +166,19 @@ class EditorTest(Fixture):
                     self.assertEqual(result['content'], data.decode('utf-8-sig').replace('\r\n', '\n'))
                     self.assertEqual(result['bom'], data.startswith(b'\xef\xbb\xbf'))
                     self.assertEqual(result['newline'], 'crlf' if b'\r\n' in data else 'lf')
+
+    def test_observe_continues_after_short_reads(self):
+        import hashlib
+        path = self.config / 'demo/settings'
+        data = bytes(range(64))
+        path.write_bytes(data)
+        with path.open('rb') as source:
+            read = source.read
+            with patch.object(source, 'read', side_effect=lambda size: read(min(size, 3))) as reads:
+                with patch.object(Path, 'open', return_value=source):
+                    result = observe(path)
+                self.assertEqual(reads.call_args.args, (8192,))
+        self.assertEqual(result['sha256'], hashlib.sha256(data).hexdigest())
 
     def test_editor_rechecks_file_after_read(self):
         target = self.config / 'demo/settings'
