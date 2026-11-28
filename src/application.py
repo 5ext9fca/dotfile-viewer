@@ -1,4 +1,5 @@
 """Validated snapshot sessions, preview and same-platform configuration apply."""
+from copy import deepcopy
 from pathlib import Path
 import hashlib
 import json
@@ -32,31 +33,39 @@ def _confirm_detach(plan, detach):
 class _PreparedSnapshot:
     """Pin an archive in private staging for preview, installation and application."""
     def __init__(self, path, *, platform=None, roots=None, backup=None, protected=(), stage_payload=True):
-        self.path = Path(path).resolve()
-        self.platform = platform or host()
-        self.roots = roots if roots is not None else host_roots()
-        self.backup = Path(backup or os.environ.get('DOTFILES_BACKUP_DIR') or state_home() / 'backups').resolve()
-        self.protected = [self.path, Path(__file__).resolve().parent, *map(lambda p: Path(p).resolve(), protected)]
+        self._path = Path(path).resolve()
+        self._platform = platform or host()
+        self._roots = roots if roots is not None else host_roots()
+        self._backup = Path(backup or os.environ.get('DOTFILES_BACKUP_DIR') or state_home() / 'backups').resolve()
+        self._protected = [self._path, Path(__file__).resolve().parent, *map(lambda p: Path(p).resolve(), protected)]
         self._temporary = tempfile.TemporaryDirectory(prefix='viewer-snapshot-')
         self._closed = False
-        self.scratch = Path(self._temporary.name)
+        self._scratch = Path(self._temporary.name)
         try:
-            pinned = self.scratch / 'snapshot.zip'
-            shutil.copyfile(self.path, pinned)
-            destination = self.scratch / 'unpacked' if stage_payload else None
-            self.snapshot = verify_archive(pinned, destination)
-            if self.snapshot.platform != self.platform:
+            pinned = self._scratch / 'snapshot.zip'
+            shutil.copyfile(self._path, pinned)
+            destination = self._scratch / 'unpacked' if stage_payload else None
+            self._snapshot = verify_archive(pinned, destination)
+            if self._snapshot.platform != self._platform:
                 raise SnapshotError('Snapshot platform, architecture or environment mismatch')
-            self.destinations = targets(self.snapshot.software, self.roots)
-            for target in self.destinations.values():
-                if any(target == p or target.is_relative_to(p) or p.is_relative_to(target) for p in [*self.protected, self.scratch]):
+            self._destinations = targets(self._snapshot.software, self._roots)
+            for target in self._destinations.values():
+                if any(target == p or target.is_relative_to(p) or p.is_relative_to(target) for p in [*self._protected, self._scratch]):
                     raise CoreError('Configuration overlaps protected application or snapshot path')
-            protected_state(self.backup, self.destinations.values())
+            protected_state(self._backup, self._destinations.values())
             # A member name sorts before its descendants, regardless of manifest order.
-            self._entries = sorted(self.snapshot.entries, key=member_name)
+            self._entries = sorted(self._snapshot.entries, key=member_name)
         except BaseException:
             self.close()
             raise
+
+    @property
+    def snapshot(self):
+        return deepcopy(self._snapshot)
+
+    @property
+    def destination_roots(self) -> tuple[Path, ...]:
+        return tuple(self._destinations.values())
 
     def _ensure_open(self):
         if self._closed:
@@ -78,7 +87,7 @@ class _PreparedSnapshot:
         self._ensure_open()
         rows = []
         for entry in self._entries:
-            base = self.destinations[(entry['software'], entry['config'])]
+            base = self._destinations[(entry['software'], entry['config'])]
             target = base / entry['path'] if entry['path'] else base
             no_links(target)
             # Reject file ancestors before starting any installation or write.
@@ -115,7 +124,7 @@ class _PreparedSnapshot:
             _confirm_detach(plan, detach)
             if all(row['action'] == 'skip' for row in plan['items']):
                 return dict(status='unchanged', **plan)
-            session = new_session(self.backup)
+            session = new_session(self._backup)
             result = dict(status='running', session=str(session), items=[])
             report = session / 'result.json'
             atomic_json(report, result)
@@ -135,7 +144,7 @@ class _PreparedSnapshot:
                     else:
                         no_links(target)
                         target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-                        saved = publish_file(target, self.scratch / 'unpacked' / member_name(entry), row['version'], session,
+                        saved = publish_file(target, self._scratch / 'unpacked' / member_name(entry), row['version'], session,
                                              detach=detach, executable=entry['executable'], preserve_permissions=False)
                         result['items'].append(dict(row, **{k: v for k, v in saved.items() if k not in row}))
                     atomic_json(report, result)

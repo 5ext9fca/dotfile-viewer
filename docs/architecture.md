@@ -2,7 +2,7 @@
 
 Viewer 单向被 syncronizer 依赖。Viewer 持有声明及配置文件能力，syncronizer 持有安装执行能力。Python >=3.14，无第三方运行时依赖；CLI 与 Python API 共用编辑器、快照应用和部署锁实现。
 
-`dotfile_viewer.api` 的 `API_VERSION=1` 是公共接口：
+`dotfile_viewer.api` 的 `API_VERSION=2` 是公共接口：
 
 - `catalog_root(directory=None)`、`load_catalog(directory=None)`、`selection(...)` 定位并验证声明。
 - `installation(...)`、`installation_roots(...)`、`select(...)` 供安装器读取规则与选择；不执行安装。
@@ -58,3 +58,5 @@ with api.snapshot_catalog(snapshot) as root:
 生成的 profile 保留显式选择顺序或单独的 `all`，软件声明包含依赖闭包。
 
 编辑器和 CLI 原文输出使用内部 `text_codec` 模块。读取时识别 UTF-8 BOM 和统一的 LF 或 CRLF，混合换行会返回不可编辑原因。保存时先规范化候选正文中的 CRLF，再按目标格式编码，2 MiB 上限按编码后的字节数计算。CLI `show` 从本次读取的正文和格式重建原始字节。
+
+会话独占暂存载荷和已验证文档。每次读取 snapshot 返回独立副本，destination_roots 返回按声明映射顺序排列的不可变路径元组。两者在关闭后仍可读取。

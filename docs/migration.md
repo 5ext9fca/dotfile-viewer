@@ -23,3 +23,19 @@ GitHub 公开仓库从经过审核的 0.2.0 源码开始，首个提交没有父
 - syncronizer 的快照/配置命令作为兼容包装器，调用 Viewer；完整 restore 仍先安装再应用。Viewer 的 apply 只应用配置。
 
 保存仍与其他路径共享硬链接的文件需要显式确认独立保存；不会悄悄更改其他链接。快照应用也使用相同确认规则。未知目标额外文件保留。
+
+## 快照会话 API v2
+
+使用 viewer.scratch 或 viewer.destinations 的 syncronizer 版本须先迁移，再配套发布。编排方用 destination_roots 检查报告目录重叠，用自己的临时目录保存编排上下文。租约在构造时绑定。
+
+```python
+from tempfile import TemporaryDirectory
+from dotfile_viewer import api
+
+with api.deployment_lease(dry=dry) as lease, api.SnapshotSession(path, lease=lease) as viewer:
+    with api.snapshot_catalog(viewer.snapshot) as catalog, TemporaryDirectory() as context:
+        targets = viewer.destination_roots
+        plan = viewer.preview() if dry else viewer.preflight(detach=detach)
+        # 编排方在此检查报告路径，并使用 catalog 和 context 预演或执行安装。
+        result = viewer.apply(dry=dry, detach=detach)
+```

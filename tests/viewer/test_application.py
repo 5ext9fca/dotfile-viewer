@@ -104,9 +104,9 @@ class ApplicationTest(Fixture):
                 directory.rmdir()
             with api.deployment_lease() as lease:
                 with api.SnapshotSession(self.archive, lease=lease, **options) as session:
-                    self.assertTrue(session.scratch.is_dir())
+                    self.assertEqual(session.destination_roots, (self.config / 'demo',))
                 session.close()
-                self.assertFalse(session.scratch.exists())
+                self.assertFalse(hasattr(session, 'scratch'))
                 self.assertEqual(session.snapshot.document(), snapshot.document())
                 with (patch.object(session, '_apply_lease') as acquire,
                       patch('dotfile_viewer.application.observe') as observed,
@@ -155,6 +155,25 @@ class ApplicationTest(Fixture):
             self.assertEqual(session.apply(detach=True, expected_version=confirmed['version'])['status'], 'applied')
             self.assertEqual(alias.read_bytes(), b'local')
             self.assertEqual(target.read_bytes(), b'hello\r\n')
+
+    def test_session_owned_inputs(self):
+        self.capture()
+        options = dict(platform=self.platform, roots=self.roots, backup=self.editor.backup)
+        target = self.config / 'demo/settings'
+        target.write_text('changed')
+        with api.deployment_lease() as lease, api.SnapshotSession(self.archive, lease=lease, **options) as session:
+            plan = session.preview()
+            copy = session.snapshot
+            copy.software['demo']['config'][0].update(path='other', exclude=[])
+            copy.entries[0]['path'] = 'other'
+            with api.snapshot_catalog(session.snapshot) as root, api.SnapshotSession(self.archive, **options) as other:
+                self.assertEqual(api.selection(root, profile='snapshot'), ['demo'])
+                self.assertEqual(session.preflight(), other.preview())
+                self.assertEqual(session.preview(), plan)
+                self.assertTrue(target.is_relative_to(session.destination_roots[0]))
+                session.apply(expected_version=plan['version'])
+        self.assertEqual(target.read_bytes(), b'hello\r\n')
+        self.assertEqual(session.destination_roots, (self.config / 'demo',))
 
     def test_preview_conflict(self):
         self.capture()
