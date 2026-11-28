@@ -371,6 +371,33 @@ class ArchiveTest(Fixture):
         with self.assertRaisesRegex(api.SnapshotError, 'another platform'):
             api.Snapshot.parse(document)
 
+    def test_invalid_documents_share_snapshot_error(self):
+        from contextlib import redirect_stderr
+        from io import StringIO
+        from dotfile_viewer import cli
+        doc = self.capture().document()
+        for changes in (
+            dict(created_at='bad'),
+            dict(entries=[dict(doc['entries'][0], software=[])]),
+            dict(software={'demo': dict(schema_version=1, install={'macos': []})}),
+            dict(software={'demo': dict(doc['software']['demo'], requires={'macos': ['absent']})}),
+            dict(entries=[]),
+        ):
+            document = dict(doc, **changes)
+            with self.assertRaises(api.SnapshotError) as parsed:
+                api.Snapshot.parse(document)
+            with zipfile.ZipFile(self.archive, 'w') as archive:
+                archive.writestr('manifest.json', json.dumps(document))
+            with self.assertRaises(api.SnapshotError) as checked:
+                api.verify_archive(self.archive)
+            self.assertEqual(str(parsed.exception), str(checked.exception))
+            with redirect_stderr(StringIO()):
+                self.assertEqual(cli.main(['snapshot', 'inspect', '--snapshot', str(self.archive)]), 3)
+        declaration = self.catalog / 'software/items/demo.toml'
+        declaration.write_text('schema_version=0')
+        with redirect_stderr(StringIO()):
+            self.assertEqual(cli.main(['--catalog', str(self.catalog), 'list']), 2)
+
     def test_old_manifest_rejected(self):
         self.capture()
         with zipfile.ZipFile(self.archive) as original:

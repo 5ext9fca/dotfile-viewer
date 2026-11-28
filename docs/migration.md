@@ -49,3 +49,7 @@ files 输出中，无法枚举的目录只出现一次，kind 为 unavailable，
 ## Python API v3
 
 检查快照使用 `api.verify_archive(path)`，它校验所有载荷并返回文档。原 destination 参数已移除。读取软件声明使用 `with api.snapshot_catalog(snapshot) as root`；应用配置使用 `api.apply_snapshot(path)` 或 SnapshotSession。载荷暂存目录由会话管理。
+
+## Python API v4
+
+对快照文档、归档检查和应用中的无效清单捕获 api.SnapshotError，包括内嵌声明或依赖无效的情况。CLI snapshot inspect 对此返回 3。本地声明及 profile 继续使用 DeclarationError 和退出码 2。清单仍为 manifest v2。

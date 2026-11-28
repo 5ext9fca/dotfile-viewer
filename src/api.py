@@ -1,4 +1,4 @@
-"""Public Python API v3; shared by CLI and dotfile-syncronizer.
+"""Public Python API v4; shared by CLI and dotfile-syncronizer.
 
 Snapshots use manifest v2. Catalog declarations retain v1 and profiles v3.
 No API in this package installs software or executes declaration contents.
@@ -18,7 +18,7 @@ from .host import host, host_roots
 from .errors import CoreError, SnapshotError
 from .files import ConflictError, ConfirmationRequired
 
-API_VERSION = 3
+API_VERSION = 4
 
 
 @contextmanager

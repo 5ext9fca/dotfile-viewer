@@ -20,7 +20,7 @@ python3.14 -m venv .venv
 
 Windows 使用 `.venv\Scripts\python.exe` 和 `.venv\Scripts\dotfile-viewer.exe`。项目通过 CLI 和 Python API 提供能力，无第三方运行时依赖。
 
-Python API 当前为 v3，安装器需同步迁移快照会话接口。Python API 使用 `dotfile_viewer.api`，模块入口为 `python -m dotfile_viewer`。从旧名称升级时先卸载 `dotfiles-viewer`，再安装本项目，并同步升级 syncronizer；不提供旧名称兼容入口。详见[更名迁移](docs/migration.md)。
+Python API 当前为 v4，安装器需同步迁移快照会话接口。Python API 使用 `dotfile_viewer.api`，模块入口为 `python -m dotfile_viewer`。从旧名称升级时先卸载 `dotfiles-viewer`，再安装本项目，并同步升级 syncronizer；不提供旧名称兼容入口。详见[更名迁移](docs/migration.md)。
 
 ## 配置编辑
 

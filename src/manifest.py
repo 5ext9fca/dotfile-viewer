@@ -4,7 +4,7 @@ from datetime import datetime
 import re
 
 from .errors import SnapshotError
-from .install_schema import InstallSchema
+from .install_schema import DeclarationError, InstallSchema
 from .paths import is_excluded
 from .software import PLATFORMS, _installation, _select, relative, validate
 
@@ -46,13 +46,20 @@ class Snapshot:
         if not isinstance(data['platform'], dict) or set(data['platform']) != {'branch', 'architecture', 'environment'}:
             raise SnapshotError('Invalid snapshot platform')
         platform = Platform(**data['platform']).validate()
-        if not isinstance(data['created_at'], str) or not datetime.fromisoformat(data['created_at']).tzinfo:
+        try:
+            timestamp = datetime.fromisoformat(data['created_at'])
+        except (TypeError, ValueError) as exc:
+            raise SnapshotError('Invalid snapshot timestamp (created_at)') from exc
+        if timestamp.tzinfo is None:
             raise SnapshotError('Invalid snapshot timestamp')
         names = data['selection']
         if not isinstance(names, list) or not names or any(not isinstance(n, str) for n in names) or len(names) != len(set(names)):
             raise SnapshotError('Invalid snapshot selection')
         catalog = data['software']
-        _validate_software(catalog, platform, names)
+        try:
+            _validate_software(catalog, platform, names)
+        except DeclarationError as exc:
+            raise SnapshotError(f'Invalid snapshot software: {exc}') from exc
         entries = data['entries']
         _validate_entries(entries, catalog)
         return cls(platform, data['created_at'], tuple(names), catalog, tuple(entries))
@@ -63,7 +70,10 @@ def _validate_software(catalog, platform, names):
         raise SnapshotError('Empty snapshot software set')
     schema = InstallSchema()
     for identity, declaration in catalog.items():
-        validate(identity, declaration, schema)
+        try:
+            validate(identity, declaration, schema)
+        except (DeclarationError, TypeError, ValueError, KeyError, AttributeError) as exc:
+            raise SnapshotError(f'Invalid snapshot software {identity}: {exc}') from exc
         if (any(p != platform.branch and not p.startswith(platform.branch + '/') for p in declaration.get('install', {}))
                 or any(c['platforms'] != [platform.branch] for c in declaration.get('config', []))
                 or any(p != platform.branch for p in declaration.get('requires', {}))):
@@ -83,6 +93,8 @@ def _validate_entries(entries, catalog):
     for entry in entries:
         if not isinstance(entry, dict) or set(entry) != {'software', 'config', 'path', 'kind', 'size', 'sha256', 'executable'}:
             raise SnapshotError('Invalid snapshot entry')
+        if not isinstance(entry['software'], str) or not isinstance(entry['config'], str):
+            raise SnapshotError('Invalid entry software or config identifier')
         key = (entry['software'], entry['config'])
         if key not in configs or not isinstance(entry['path'], str) or (entry['path'] and not relative(entry['path'])):
             raise SnapshotError('Invalid snapshot entry path')

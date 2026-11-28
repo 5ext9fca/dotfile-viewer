@@ -2,7 +2,7 @@
 
 Viewer 单向被 syncronizer 依赖。Viewer 持有声明及配置文件能力，syncronizer 持有安装执行能力。Python >=3.14，无第三方运行时依赖；CLI 与 Python API 共用编辑器、快照应用和部署锁实现。
 
-`dotfile_viewer.api` 的 `API_VERSION=3` 是公共接口：
+`dotfile_viewer.api` 的 `API_VERSION=4` 是公共接口：
 
 - `catalog_root(directory=None)`、`load_catalog(directory=None)`、`selection(...)` 定位并验证声明。
 - `installation(...)`、`installation_roots(...)`、`select(...)` 供安装器读取规则与选择；不执行安装。

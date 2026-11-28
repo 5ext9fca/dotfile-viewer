@@ -287,7 +287,7 @@ class CatalogTest(Fixture):
             init.assert_called_once()
 
         del manifest['software']['runtime']
-        with self.assertRaisesRegex(DeclarationError, 'runtime'):
+        with self.assertRaisesRegex(api.SnapshotError, 'runtime'):
             api.Snapshot.parse(manifest)
         (items / 'runtime.toml').unlink()
         with self.assertRaisesRegex(DeclarationError, 'runtime'):
