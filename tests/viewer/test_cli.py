@@ -14,13 +14,18 @@ class CliTest(Fixture):
     def test_show_and_save_preserve_text_format(self):
         path = self.config / 'demo/settings'
         bom = bytes.fromhex('efbbbf')
-        for data in (b'', bom, b'plain', b'a\nb', bom + b'a\r\n\r\nb'):
+        for data in (b'', bom, b'plain', b'a\nb', bom + b'a\r\n\r\nb', '中文📁\n'.encode()):
             path.write_bytes(data)
+            current = self.read()
+            content = data.decode('utf-8-sig').replace('\r\n', '\n')
+            self.assertEqual(current['content'], content)
+            self.assertEqual(self.save(content, current['version'])['status'], 'unchanged')
+            self.assertEqual(path.read_bytes(), data)
             raw = io.BytesIO()
             with io.TextIOWrapper(raw) as output, redirect_stdout(output), patch.object(api, 'Editor', return_value=self.editor):
                 self.assertEqual(cli.main(['show', 'demo', 'settings', 'settings']), 0)
                 self.assertEqual(raw.getvalue(), data)
-            self.save('c\nd')
+            self.save('c\r\nd')
             expected = b'c\r\nd' if b'\r' in data else b'c\nd'
             self.assertEqual(path.read_bytes(), (bom if data.startswith(bom) else b'') + expected)
         for data in (b'\r', b'a\r\nb\n', b'a\r\r\n', b'\x00', b'\xff'):
@@ -28,6 +33,33 @@ class CliTest(Fixture):
             current = self.read()
             self.assertFalse(current['editable'])
             self.assertEqual(current['reason'], 'Not UTF-8' if data == b'\xff' else 'Binary or mixed newline content')
+
+            with (patch.object(api, 'Editor', return_value=self.editor),
+                  redirect_stdout(io.StringIO()) as output, redirect_stderr(io.StringIO()) as errors):
+                self.assertEqual(cli.main(['show', 'demo', 'settings', 'settings']), 3)
+                self.assertEqual(output.getvalue(), '')
+                self.assertIn(current['reason'], errors.getvalue())
+            with self.assertRaisesRegex(api.CoreError, current['reason']):
+                self.save('candidate', current['version'])
+            self.assertEqual(path.read_bytes(), data)
+
+    def test_encoded_size_boundary(self):
+        limit = 2 * 1024 * 1024
+        path = self.config / 'demo/settings'
+        path.write_bytes(b'\xef\xbb\xbf\r\n')
+        candidate = '文' + 'a' * (limit - 8) + '\n'
+        expected = candidate.replace('\n', '\r\n').encode('utf-8-sig')
+        self.assertEqual(len(expected), limit)
+        self.save(candidate)
+        self.assertEqual(path.read_bytes(), expected)
+        current = self.read()
+        self.assertEqual(current['content'], candidate)
+        with self.assertRaisesRegex(api.CoreError, 'exceeds 2 MiB'):
+            self.save(candidate + 'a', current['version'])
+        raw = io.BytesIO()
+        with io.TextIOWrapper(raw) as output, redirect_stdout(output), patch.object(api, 'Editor', return_value=self.editor):
+            self.assertEqual(cli.main(['show', 'demo', 'settings', 'settings']), 0)
+            self.assertEqual(raw.getvalue(), expected)
 
     def test_cli_readonly_handlers(self):
         with patch.object(api, 'Editor', return_value=self.editor):

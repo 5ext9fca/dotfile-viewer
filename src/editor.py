@@ -9,6 +9,7 @@ from .host import host, host_roots
 from .lease import deployment_lease
 from .paths import is_excluded, no_links
 from .software import relative
+from .text_codec import decode_text, encode_text, normalize_candidate
 
 MAX_TEXT = 2 * 1024 * 1024
 
@@ -119,21 +120,7 @@ class Editor:
         result = dict(before, path=str(path), editable=False)
         if data is None:
             return dict(result, reason='Not a text file or exceeds 2 MiB')
-        try:
-            text = data.decode('utf-8-sig')
-        except UnicodeError:
-            return dict(result, reason='Not UTF-8')
-        bom = data.startswith(b'\xef\xbb\xbf')
-        if '\x00' in text:
-            return dict(result, reason='Binary or mixed newline content')
-        newline = 'lf'
-        if '\r' in text:
-            pairs = text.count('\r\n')
-            if pairs != text.count('\r') or pairs != text.count('\n'):
-                return dict(result, reason='Binary or mixed newline content')
-            text = text.replace('\r\n', '\n')
-            newline = 'crlf'
-        return dict(result, editable=True, content=text, bom=bom, newline=newline)
+        return dict(result, **decode_text(data))
 
     def save(self, software, config, file, content, expected_version, *, detach=False):
         if not isinstance(content, str) or not expected_version:
@@ -147,14 +134,10 @@ class Editor:
                 raise ConflictError('File changed; reload and merge your draft')
             if not current['editable']:
                 raise CoreError(current['reason'])
-            content = content.replace('\r\n', '\n')
-            if '\r' in content or '\x00' in content:
-                raise CoreError('Invalid text content')
+            content = normalize_candidate(content)
             if content == current['content']:
                 return dict(status='unchanged', version=current['version'])
-            data = content.replace('\n', '\r\n' if current['newline'] == 'crlf' else '\n').encode('utf-8')
-            if current['bom']:
-                data = b'\xef\xbb\xbf' + data
+            data = encode_text(content, bom=current['bom'], newline=current['newline'])
             if len(data) > MAX_TEXT:
                 raise CoreError('Text exceeds 2 MiB')
             if self._target(item, file) != path:

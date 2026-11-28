@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 from . import api
+from .text_codec import encode_text
 from .install_schema import DeclarationError
 
 
@@ -95,9 +96,7 @@ def _show(args):
         return current
     if not current['editable']:
         raise api.CoreError(current['reason'])
-    # Reuse verified content rather than reopening a possibly changed file.
-    text = current['content'].replace('\n', '\r\n' if current['newline'] == 'crlf' else '\n')
-    sys.stdout.buffer.write((b'\xef\xbb\xbf' if current['bom'] else b'') + text.encode('utf-8'))
+    sys.stdout.buffer.write(encode_text(current['content'], bom=current['bom'], newline=current['newline']))
     return None
 
 

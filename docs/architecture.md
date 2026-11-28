@@ -56,3 +56,5 @@ with api.snapshot_catalog(snapshot) as root:
 ```
 
 生成的 profile 保留显式选择顺序或单独的 `all`，软件声明包含依赖闭包。
+
+编辑器和 CLI 原文输出使用内部 `text_codec` 模块。读取时识别 UTF-8 BOM 和统一的 LF 或 CRLF，混合换行会返回不可编辑原因。保存时先规范化候选正文中的 CRLF，再按目标格式编码，2 MiB 上限按编码后的字节数计算。CLI `show` 从本次读取的正文和格式重建原始字节。
