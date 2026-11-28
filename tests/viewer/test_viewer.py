@@ -95,6 +95,24 @@ class ViewerTest(Fixture):
         self.assertIn('fish', api.load_catalog())
         self.assertEqual(len(self.editor.configurations()), 1)
 
+    def test_write_catalog_reuses_schema_per_call(self):
+        catalog = api.load_catalog(self.catalog)
+        catalog['other'] = catalog['demo']
+        with patch.object(InstallSchema, '__init__', autospec=True, side_effect=InstallSchema.__init__) as init:
+            empty = self.root / 'empty'
+            api.write_catalog({}, empty)
+            self.assertEqual(list(empty.iterdir()), [])
+            init.assert_not_called()
+            for name in ('first', 'second'):
+                api.write_catalog(catalog, self.root / name)
+                init.assert_called_once()
+                init.reset_mock()
+
+        partial = self.root / 'partial'
+        with self.assertRaises(DeclarationError):
+            api.write_catalog({'demo': catalog['demo'], 'invalid': {}}, partial)
+        self.assertEqual([p.name for p in partial.iterdir()], ['demo.toml'])
+
     def test_schema_reuse_for_catalog_and_manifest(self):
         items = self.catalog / 'software/items'
         for name, order in [('client', 1), ('runtime', 2)]:

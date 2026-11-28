@@ -173,8 +173,11 @@ def write_catalog(catalog, directory):
     import json
     directory = Path(directory)
     directory.mkdir(parents=True)
+    if not catalog:
+        return
+    schema = InstallSchema()
     for identity, data in catalog.items():
-        validate(identity, data)
+        validate(identity, data, schema)
         lines = ['schema_version = 1', '']
         for section, values in data.get('install', {}).items():
             lines += ['[install.' + json.dumps(section) + ']']
