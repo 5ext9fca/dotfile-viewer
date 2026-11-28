@@ -134,13 +134,15 @@ def _targets(configs, roots):
     result = {}
     destinations = set()
     ancestors = set()
+    resolved_roots = {}
     for key, config in configs.items():
-        value = roots.get(config['root'], '')
-        if not value or not Path(value).is_absolute():
-            raise SnapshotError(f'Missing absolute configuration root: {config["root"]}')
-        # Resolve the caller-owned root once (e.g. macOS /var -> /private/var),
-        # then reject links within its selected descendants.
-        root = Path(value).resolve()
+        name = config['root']
+        if name not in resolved_roots:
+            value = roots.get(name, '')
+            if not value or not Path(value).is_absolute():
+                raise SnapshotError(f'Missing absolute configuration root: {name}')
+            resolved_roots[name] = Path(value).resolve()
+        root = resolved_roots[name]
         target = root / config['path']
         no_links(target, root)
         folded = str(target).casefold()

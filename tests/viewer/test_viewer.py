@@ -521,6 +521,21 @@ class ViewerTest(Fixture):
             self.assertEqual(saved.entries, preview.entries)
             self.assertEqual(api.verify_archive(output).entries, preview.entries)
 
+    def test_snapshot_resolves_shared_root_once_per_mapping(self):
+        from dotfile_viewer.snapshot import targets
+        configs = [dict(id=str(i), root='home', path=f'tool-{i}') for i in range(128)]
+        catalog = {'demo': {'config': configs}}
+        with patch.object(Path, 'resolve', autospec=True, side_effect=Path.resolve) as resolve:
+            locations = targets(catalog, self.roots)
+            self.assertEqual(len(locations), 128)
+            resolve.assert_called_once_with(self.root)
+        for roots in ({}, {'home': 'relative'}):
+            with self.assertRaisesRegex(api.SnapshotError, 'absolute configuration root'):
+                targets(catalog, roots)
+        (self.root / 'tool-127').symlink_to(self.config)
+        with self.assertRaisesRegex(api.SnapshotError, 'Links/reparse'):
+            targets(catalog, self.roots)
+
     def test_configuration_destination_overlaps(self):
         from dotfile_viewer.snapshot import targets
 
