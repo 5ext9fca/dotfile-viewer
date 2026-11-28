@@ -250,11 +250,36 @@ class ArchiveTest(Fixture):
             with zipfile.ZipFile(self.archive) as archive:
                 self.assertEqual(archive.read('manifest.json'), expected)
 
+    def test_manifest_size_boundary(self):
+        from datetime import datetime, timezone
+        from dotfile_viewer.snapshot import MAX_MANIFEST_BYTES
+        self.assertEqual(MAX_MANIFEST_BYTES, 16 * 1024 * 1024)
+        (self.config / 'demo/中文').touch()
+        def export(dry):
+            return api.export_snapshot(self.archive, catalog=self.catalog, software=['demo'],
+                                       platform=self.platform, roots=self.roots, dry=dry)
+
+        with patch('dotfile_viewer.snapshot.datetime') as clock:
+            clock.now.return_value = datetime(2026, 1, 1, tzinfo=timezone.utc)
+            size = len(json.dumps(export(True).document(), ensure_ascii=False, indent=2).encode())
+            with patch('dotfile_viewer.snapshot.MAX_MANIFEST_BYTES', size):
+                self.assertEqual(export(True), export(False))
+                api.verify_archive(self.archive)
+            with patch('dotfile_viewer.snapshot.MAX_MANIFEST_BYTES', size - 1):
+                with self.assertRaisesRegex(api.SnapshotError, '16 MiB'):
+                    api.verify_archive(self.archive)
+                self.archive.unlink()
+                for dry in (True, False):
+                    with self.assertRaisesRegex(api.SnapshotError, '16 MiB'):
+                        export(dry)
+                    self.assertFalse(self.archive.exists())
+                    self.assertEqual(list(self.root.glob('.dotfiles-snapshot-*')), [])
+
     def test_manifest_write_failure_cleans_archive(self):
         def fail(document, stream, **kwargs):
-            stream.write('{')
+            stream.write(b'{')
             raise OSError('manifest failed')
-        with patch('dotfile_viewer.snapshot.json.dump', side_effect=fail), self.assertRaisesRegex(OSError, 'manifest failed'):
+        with patch('dotfile_viewer.snapshot._encode_manifest', side_effect=fail), self.assertRaisesRegex(OSError, 'manifest failed'):
             self.capture()
         self.assertFalse(self.archive.exists())
         self.assertEqual(list(self.root.glob('.dotfiles-snapshot-*')), [])

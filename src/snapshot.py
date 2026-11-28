@@ -22,6 +22,9 @@ from dotfile_viewer.paths import is_excluded, no_links, signature
 from dotfile_viewer.software import select, relative
 
 
+MAX_MANIFEST_BYTES = 16 * 1024 * 1024
+
+
 def targets(catalog, roots):
     return _targets(configurations(catalog), roots)
 
@@ -95,7 +98,7 @@ def open_manifest(archive):
         manifest = archive.getinfo('manifest.json')
     except KeyError as exc:
         raise SnapshotError('Duplicate archive members or missing manifest') from exc
-    if manifest.file_size > 16 * 1024 * 1024:
+    if manifest.file_size > MAX_MANIFEST_BYTES:
         raise SnapshotError('Snapshot manifest exceeds 16 MiB')
     snapshot = Snapshot.parse(json.loads(archive.read('manifest.json').decode('utf-8'), object_pairs_hook=json_object))
     expected_count = 1
@@ -151,10 +154,21 @@ def _verify_archive(path, destination=None):
     return snapshot
 
 
+def _encode_manifest(document, output=None):
+    size = 0
+    encoder = json.JSONEncoder(ensure_ascii=False, indent=2)
+    for chunk in encoder.iterencode(document):
+        data = chunk.encode('utf-8')
+        size += len(data)
+        if size > MAX_MANIFEST_BYTES:
+            raise SnapshotError('Snapshot manifest exceeds 16 MiB')
+        if output is not None:
+            output.write(data)
+
+
 def _write_manifest(archive, document):
-    with archive.open('manifest.json', 'w') as member:
-        with io.TextIOWrapper(io.BufferedWriter(member, 64 * 1024), encoding='utf-8', newline='\n') as stream:
-            json.dump(document, stream, ensure_ascii=False, indent=2)
+    with archive.open('manifest.json', 'w') as member, io.BufferedWriter(member, 64 * 1024) as stream:
+        _encode_manifest(document, stream)
 
 
 def _collect_snapshot(platform, selection, chosen, configs, locations, roots, archive=None):
@@ -199,7 +213,9 @@ def capture(catalog, platform, selection, roots, output, dry=False):
     if any(physical_output == p or physical_output.is_relative_to(p) for p in locations.values()):
         raise SnapshotError('Snapshot output overlaps a configuration source')
     if dry:
-        return _collect_snapshot(platform, selection, chosen, configs, locations, roots)
+        snapshot = _collect_snapshot(platform, selection, chosen, configs, locations, roots)
+        _encode_manifest(snapshot.document())
+        return snapshot
     fd, temporary = tempfile.mkstemp(prefix='.dotfiles-snapshot-', suffix='.zip', dir=output.parent)
     try:
         os.close(fd)

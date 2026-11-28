@@ -70,3 +70,5 @@ with api.snapshot_catalog(snapshot) as root:
 read_items 在每次调用内构造一份指定规则。TOML 读取在全平台校验中保留请求平台的排序结果，后续调用重新读取规则与声明。TOML 和旧 .conf 共用 schema_directory 参数。
 
 Editor.files 使用显式栈，按父目录优先和兄弟名称顺序列出路径。目录枚举完成后才返回该路径的结果行。枚举失败会返回一条含 error 的 unavailable 记录，并继续浏览可访问的兄弟项。
+
+manifest.json 的上限为 16 MiB，按未压缩 UTF-8 字节计算。预演与正式导出共用增量 JSON 编码，回读按同一上限检查。
