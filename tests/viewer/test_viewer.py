@@ -57,7 +57,7 @@ class ViewerTest(Fixture):
         for name in ('macos', 'linux', 'wsl'):
             selected = api.selection(profile=name)
             self.assertIn('zsh', selected)
-            self.assertTrue({'fzf', 'starship', 'atuin', 'zoxide'} <= set(selected))
+            self.assertTrue({'eza', 'fzf', 'starship', 'atuin', 'zoxide'} <= set(selected))
             self.assertNotIn('fish', selected)
             self.assertEqual('antidote' in selected, name == 'macos')
             self.assertEqual(api.selection(profile=name + '-full'), ['all'])
@@ -100,6 +100,7 @@ class ViewerTest(Fixture):
         catalog = api.load_catalog()
         fonts = {'sf-pro-text', 'pingfang-sc'}
         self.assertEqual(set(api.selection(profile='windows-fonts')), fonts)
+        self.assertIn('eza', api.selection(profile='windows'))
         for profile in ('windows', 'windows-full', 'windows-fonts'):
             selected = api.select(catalog, 'windows', 'native', api.selection(profile=profile))
             self.assertTrue(fonts <= selected.keys())

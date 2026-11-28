@@ -113,3 +113,7 @@ macOS ARM64、Python 3.14。运行 `./tests/check.sh --strict`，28 项全部通
 ## 2026-11-27 · 合并 Tailscale 默认选择与 src 布局
 
 Linux x86_64、Python 3.14.10。可编辑安装后，旧包目录残留的 `__pycache__` 导致 Python 从旧路径查找资源。移走仅含缓存的旧目录后，`./tests/check.sh --strict` 的 28 项测试全部通过。新路径下的 Tailscale 声明与迁移前的 Git blob 一致。本轮未在 macOS、Windows 或 WSL 原生运行。
+
+## 2026-11-29 · eza 默认选择
+
+Fedora 45 x86_64、Python 3.14.10。运行 `./tests/check.sh --strict`，28 项通过。通过公共 API 加载内置声明，校验三个 Linux 包管理器的 native 和 WSL 选择，以及 macOS、Windows 选择，普通和完整 profile 均包含 eza。syncronizer 使用更新后的 Viewer 运行 Linux 普通 profile 的 dry-run，DNF 将 eza 识别为已安装。未实际安装软件，未在 APT、Pacman、WSL、macOS 或 Windows 原生运行。
