@@ -346,6 +346,40 @@ class ViewerTest(Fixture):
             self.assertEqual(saved.entries, preview.entries)
             self.assertEqual(api.verify_archive(output).entries, preview.entries)
 
+    def test_configuration_destination_overlaps(self):
+        from dotfile_viewer.snapshot import targets
+
+        def resolve(*paths):
+            configs = [dict(id=str(i), root='home', path=path) for i, path in enumerate(paths)]
+            return targets({'demo': {'config': configs}}, self.roots)
+
+        for paths in [('tool', 'tool'), ('Straße', 'STRASSE'), ('tool', 'TOOL/nested'),
+                      ('tool/nested', 'tool')]:
+            with self.subTest(paths=paths), self.assertRaisesRegex(api.SnapshotError, 'Overlapping'):
+                resolve(*paths)
+        siblings = ['tools/a', 'tools/b', 'tools/b-old']
+        self.assertEqual(list(resolve(*siblings).values()), [self.root / path for path in siblings])
+
+    def test_overlapping_roots_in_export_and_apply_preview(self):
+        declaration = self.catalog / 'software/items/demo.toml'
+        with declaration.open('a') as stream:
+            stream.write('[[config]]\nid="other"\nplatforms=["macos"]\nroot="home"\npath="demo"\n')
+        separate = self.roots.copy()
+        self.roots['home'] = self.roots['config_home']
+        with self.assertRaisesRegex(api.SnapshotError, 'Overlapping'):
+            self.capture()
+        self.assertFalse(self.archive.exists())
+
+        (self.root / 'demo').write_bytes(b'source')
+        api.export_snapshot(self.archive, catalog=self.catalog, software=['demo'],
+                            platform=self.platform, roots=separate)
+        destination = self.root / 'destination'
+        with self.assertRaisesRegex(api.SnapshotError, 'Overlapping'):
+            api.apply_snapshot(self.archive, dry=True, platform=self.platform,
+                               roots=dict(home=destination, config_home=destination), backup=self.editor.backup)
+        self.assertFalse(destination.exists())
+        self.assertFalse(self.editor.backup.exists())
+
     def test_capture_rechecks_tree_and_root(self):
         from dotfile_viewer import snapshot
         inventory = snapshot._inventory

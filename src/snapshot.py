@@ -130,6 +130,8 @@ def targets(catalog, roots):
 
 def _targets(configs, roots):
     result = {}
+    destinations = set()
+    ancestors = set()
     for key, config in configs.items():
         value = roots.get(config['root'], '')
         if not value or not Path(value).is_absolute():
@@ -140,9 +142,11 @@ def _targets(configs, roots):
         target = root / config['path']
         no_links(target, root)
         folded = str(target).casefold()
-        if any(folded == str(p).casefold() or folded.startswith(str(p).casefold() + os.sep)
-               or str(p).casefold().startswith(folded + os.sep) for p in result.values()):
+        parents = [str(parent).casefold() for parent in target.parents]
+        if folded in destinations or folded in ancestors or not destinations.isdisjoint(parents):
             raise SnapshotError('Overlapping configuration destinations')
+        destinations.add(folded)
+        ancestors.update(parents)
         result[key] = target
     return result
 
