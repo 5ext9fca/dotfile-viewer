@@ -187,19 +187,30 @@ def json_object(pairs):
 
 def open_manifest(archive):
     members = archive.infolist()
-    names = [i.filename for i in members]
-    if len(names) != len(set(names)) or names.count('manifest.json') != 1:
-        raise SnapshotError('Duplicate archive members or missing manifest')
     for info in members:
+        # Duplicate names share a lookup key, but have distinct central-directory records.
+        if archive.getinfo(info.filename) is not info:
+            raise SnapshotError('Duplicate archive members or missing manifest')
         mode = info.external_attr >> 16
         if (info.orig_filename != info.filename or not relative(info.filename) or info.is_dir() or info.flag_bits & 1
                 or stat.S_IFMT(mode) not in (0, stat.S_IFREG)):
             raise SnapshotError('Unsafe archive member')
-    if archive.getinfo('manifest.json').file_size > 16 * 1024 * 1024:
+    try:
+        manifest = archive.getinfo('manifest.json')
+    except KeyError as exc:
+        raise SnapshotError('Duplicate archive members or missing manifest') from exc
+    if manifest.file_size > 16 * 1024 * 1024:
         raise SnapshotError('Snapshot manifest exceeds 16 MiB')
     snapshot = Snapshot.parse(json.loads(archive.read('manifest.json').decode('utf-8'), object_pairs_hook=json_object))
-    expected = {'manifest.json'} | {member_name(e) for e in snapshot.entries if e['kind'] == 'file'}
-    if set(names) != expected:
+    expected_count = 1
+    for entry in snapshot.entries:
+        if entry['kind'] == 'file':
+            try:
+                archive.getinfo(member_name(entry))
+            except KeyError as exc:
+                raise SnapshotError('Archive members do not match manifest') from exc
+            expected_count += 1
+    if len(members) != expected_count:
         raise SnapshotError('Archive members do not match manifest')
     return snapshot
 

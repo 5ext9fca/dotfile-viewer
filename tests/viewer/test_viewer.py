@@ -734,18 +734,22 @@ class ViewerTest(Fixture):
         with zipfile.ZipFile(self.archive) as original:
             contents = {name: original.read(name) for name in original.namelist()}
         payload = next(name for name in contents if name.startswith('payload/'))
-        for case in ('traversal', 'duplicate', 'case conflict', 'digest', 'special type'):
+        for case in ('traversal', 'duplicate', 'case conflict', 'digest', 'special type', 'missing', 'extra', 'substituted'):
             with self.subTest(case=case):
                 archive = self.root / 'invalid.zip'
                 with zipfile.ZipFile(archive, 'w') as out:
                     for name, data in contents.items():
+                        if name == payload and case in ('missing', 'substituted'):
+                            continue
                         info = zipfile.ZipInfo(name)
                         if name == payload and case == 'special type':
                             info.external_attr = 0o120777 << 16
                         if name == payload and case == 'digest':
                             data = b'x' * len(data)
                         out.writestr(info, data)
-                    if case == 'traversal':
+                    if case in ('extra', 'substituted'):
+                        out.writestr('extra', b'')
+                    elif case == 'traversal':
                         out.writestr('../outside', b'')
                     elif case == 'duplicate':
                         with warnings.catch_warnings():
