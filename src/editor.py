@@ -89,12 +89,12 @@ class Editor:
             if is_excluded(rel, item.get('exclude', [])):
                 return
             try:
-                no_links(path, base.parent)
-                if not path.exists():
+                info = no_links(path, base.parent)
+                if info is None:
                     kind = 'missing'
-                elif path.is_dir():
+                elif stat.S_ISDIR(info.st_mode):
                     kind = 'directory'
-                elif path.is_file():
+                elif stat.S_ISREG(info.st_mode):
                     kind = 'file'
                 else:
                     kind = 'unsupported'

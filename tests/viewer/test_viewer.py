@@ -315,6 +315,27 @@ class ViewerTest(Fixture):
                 with self.assertRaisesRegex(api.SnapshotError, 'Excluded content'):
                     api.Snapshot.parse(manifest)
 
+    def test_files_classifies_checked_leaf(self):
+        base = self.config / 'demo'
+        (base / 'broken').symlink_to(base / 'absent')
+        (base / 'denied').touch()
+        if hasattr(os, 'mkfifo'):
+            os.mkfifo(base / 'pipe')
+        original = Path.lstat
+        def checked(path):
+            if path == base / 'denied':
+                raise PermissionError('denied')
+            return original(path)
+        with patch.object(Path, 'lstat', checked):
+            rows = self.editor.files('demo', 'settings')
+        expected = {'': 'directory', 'broken': 'unavailable', 'denied': 'unavailable',
+                    'empty': 'directory', 'settings': 'file'}
+        if hasattr(os, 'mkfifo'):
+            expected['pipe'] = 'unsupported'
+        self.assertEqual([(r['file'], r['kind']) for r in rows], sorted(expected.items()))
+        base.rename(self.config / 'away')
+        self.assertEqual(self.editor.files('demo', 'settings'), [dict(file='', path=str(base), kind='missing')])
+
     def test_links_rejected(self):
         (self.config / 'demo/link').symlink_to(self.root)
         with self.assertRaises(api.CoreError):
