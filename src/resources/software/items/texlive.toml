@@ -24,3 +24,11 @@ method = "brew"
 packages = "texlive"
 source_kind = "default"
 install_depends_on = "homebrew"
+
+[install."windows"]
+order = "40"
+method = "texlive-iso"
+source_kind = "download"
+source_url = "https://mirrors.ctan.org/systems/texlive/Images/texlive.iso"
+mirror_url = "https://mirrors.tuna.tsinghua.edu.cn/CTAN/systems/texlive/Images/texlive.iso"
+detect_files = "path:tlmgr.bat"

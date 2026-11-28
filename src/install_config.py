@@ -73,6 +73,10 @@ class InstallSchema:
             raise DeclarationError(f'{method_name} requires one package/toolchain')
         if kind != 'cargo-index' and any(entry.get(k, '').startswith('sparse') for k in ('source_url', 'mirror_url')):
             raise DeclarationError('sparse+ URLs require cargo-index')
+        if method_name == 'texlive-iso' and any(
+            not entry[key].startswith('https://') for key in ('source_url', 'mirror_url') if key in entry
+        ):
+            raise DeclarationError('texlive-iso requires HTTPS image URLs')
         if method_name == 'font-download':
             if not entry['source_url'].startswith('https://') or entry.get('mirror_url'):
                 raise DeclarationError('font-download requires HTTPS and does not support mirrors')

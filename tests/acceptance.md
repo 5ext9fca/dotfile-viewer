@@ -121,3 +121,7 @@ Fedora 45 x86_64、Python 3.14.10。运行 `./tests/check.sh --strict`，28 项�
 ## 2026-11-29 · 开发工具普通 profile 和桌面配置
 
 Fedora 45 x86_64、Python 3.14.10。公共 API 加载内置声明并解析 APT、DNF、Pacman 各自的 native/WSL 普通 profile，以及 macOS、Windows 普通 profile。严格检查 29 项通过；新增用例在独立临时目录导出和应用合成 Zsh、Fish、Atuin、Starship、Toolbox 设置，核对历史、凭据文件和 IDE 安装目录未被采集。syncronizer 的 Fedora 普通 profile dry-run 成功，列出 OpenJDK、Ruby、.NET SDK 和 TeX Live 的 DNF 命令。未实际安装软件，未在 APT、Pacman、WSL、macOS 或 Windows 原生运行。
+
+## 2026-11-29 · Windows TeX Live ISO
+
+Fedora 45 x86_64、Python 3.14.10。Viewer 严格检查 29 项通过。syncronizer 使用当前 Viewer 验证 Windows 普通与完整 profile 的离线计划，两种 profile 都选择 texlive-iso，默认和中国镜像模式分别解析到 CTAN、清华的 ISO 地址。未在 Windows 原生下载安装。

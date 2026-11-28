@@ -130,7 +130,7 @@ class ViewerTest(Fixture):
         catalog = api.load_catalog()
         fonts = {'sf-pro-text', 'pingfang-sc'}
         self.assertEqual(set(api.selection(profile='windows-fonts')), fonts)
-        self.assertTrue({'eza', 'openjdk', 'ruby', 'dotnet', 'jetbrains-toolbox'} <= set(api.selection(profile='windows')))
+        self.assertTrue({'eza', 'openjdk', 'ruby', 'dotnet', 'texlive', 'jetbrains-toolbox'} <= set(api.selection(profile='windows')))
         for profile in ('windows', 'windows-full', 'windows-fonts'):
             selected = api.select(catalog, 'windows', 'native', api.selection(profile=profile))
             self.assertTrue(fonts <= selected.keys())

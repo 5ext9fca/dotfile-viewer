@@ -17,3 +17,4 @@ winget	windows	packages	winget	-
 msvc	windows	packages components workload	winget	-
 docker-ce	linux.apt linux.dnf	packages	download	-
 font-download	linux.apt linux.dnf linux.pacman windows	source_url font_files font_family	download	-
+texlive-iso	windows	source_url	download	-
