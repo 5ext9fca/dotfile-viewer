@@ -78,6 +78,21 @@ class ViewerTest(Fixture):
         with self.assertRaisesRegex(DeclarationError, 'Dependency cycle'):
             sort_items(graph)
 
+    def test_explicit_selection_only_checks_reachable_items(self):
+        from dotfile_viewer import software
+        platform = 'linux.apt'
+        config = dict(id='c', platforms=[platform], root='home', path='c')
+        catalog = {f'x{i}': dict(config=[config]) for i in range(4096)}
+        for name in ('x1', 'x2'):
+            catalog[name]['requires'] = {platform: ['x0']}
+        for names, expected in [(['x0'], ['x0']), (['x2', 'x1'], ['x0', 'x2', 'x1'])]:
+            with patch.object(software, 'available', wraps=software.available) as available:
+                self.assertEqual(list(api.select(catalog, platform, 'native', names)), expected)
+                self.assertEqual(available.call_count, len(expected))
+        for target, names in [('macos', ['x0']), (platform, ['unknown'])]:
+            with self.assertRaisesRegex(DeclarationError, 'Unknown or unavailable'):
+                api.select(catalog, target, 'native', names)
+
     def test_deep_selection_and_installation_roots(self):
         items = self.catalog / 'software/items'
         names = [f'deep-{i}' for i in range(2000)]

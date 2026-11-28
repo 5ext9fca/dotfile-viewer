@@ -122,15 +122,16 @@ def _select(catalog, platform, environment, names, schema, *, filter_environment
 def _selection_ids(catalog, platform, environment, names, schema, *, filter_environment=True):
     if platform not in PLATFORMS or environment not in ('native', 'wsl'):
         raise DeclarationError('Unsupported platform/environment')
-    candidates = {i: d for i, d in catalog.items() if available(d, platform)}
     def eligible(data):
         if platform not in data.get('install', {}):
             return any(platform in c['platforms'] and environment in c.get('environments', ['native', 'wsl']) for c in data.get('config', []))
         item = schema.normalize(data['install'], platform)
         return environment in item['environments'].split() and not (environment == 'wsl' and item.get('wsl_provider'))
+    candidates = None
     eligible_ids = None
     roots = names
     if names == ['all']:
+        candidates = {i: data for i, data in catalog.items() if available(data, platform)}
         if filter_environment:
             eligible_ids = {i for i, data in candidates.items() if eligible(data)}
         roots = sorted(candidates if eligible_ids is None else eligible_ids)
@@ -151,9 +152,9 @@ def _selection_ids(catalog, platform, environment, names, schema, *, filter_envi
             continue
         if identity in visiting:
             raise DeclarationError('Software dependency cycle')
-        if identity not in candidates:
+        data = (catalog if candidates is None else candidates).get(identity)
+        if data is None or (candidates is None and not available(data, platform)):
             raise DeclarationError(f'Unknown or unavailable software: {identity}')
-        data = candidates[identity]
         if filter_environment:
             allowed = identity in eligible_ids if eligible_ids is not None else eligible(data)
             if not allowed:
